@@ -1,0 +1,48 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:ap-southeast-1:985955614379:certificate/0b5aa7b8-4757-486d-b3fc-dac0dc0fa4fd
+    alb.ingress.kubernetes.io/healthcheck-path: /healthz
+    alb.ingress.kubernetes.io/healthcheck-protocol: HTTP
+    # alb.ingress.kubernetes.io/healthcheck-protocol: HTTPS
+    alb.ingress.kubernetes.io/healthy-threshold-count: '2'
+    alb.ingress.kubernetes.io/group.name: shared-alb
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80, "HTTPS": 443 }]'
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    meta.helm.sh/release-name: argo-cd
+    meta.helm.sh/release-namespace: argocd
+  # generation: 1
+  labels:
+    app.kubernetes.io/component: server
+    app.kubernetes.io/instance: argo-cd
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: argocd-server
+    app.kubernetes.io/part-of: argocd
+    app.kubernetes.io/version: v2.7.10
+    helm.sh/chart: argo-cd-5.42.1
+  name: argo-cd-argocd-server
+  namespace: argocd
+  # resourceVersion: "155851142"
+  # uid: 192ba065-c003-495d-ab15-2d2b9c50f984
+spec:
+  ingressClassName: alb
+  rules:
+  - host: argocd.shawnzh.people.aws.dev
+    http:
+      paths:
+      - backend:
+          service:
+            name: argo-cd-argocd-server
+            port:
+              number: 80
+        path: /
+        pathType: Prefix
+# status:
+#   loadBalancer:
+#     ingress:
+#     - hostname: k8s-sharedalb-4f76f4acd7-151313344.ap-southeast-1.elb.amazonaws.com
+
+
+# /healthz

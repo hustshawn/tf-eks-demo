@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: aws-cli-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: aws-cli
+  template:
+    metadata:
+      labels:
+        app: aws-cli
+    spec:
+      serviceAccountName: aws-cli-sa
+      containers:
+        - name: aws-cli
+          image: bitnami/aws-cli:latest
+          command: ["sleep", "infinity"]

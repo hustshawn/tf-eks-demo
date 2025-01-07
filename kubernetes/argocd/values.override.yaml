@@ -1,0 +1,36 @@
+server:
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+  extraArgs: 
+  - --insecure=true
+
+  ingress:
+    # -- Enable an ingress resource for the Argo CD server
+    enabled: true
+    annotations:
+      alb.ingress.kubernetes.io/group.name: shared-alb
+      alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80, "HTTPS": 443 }]'
+      alb.ingress.kubernetes.io/scheme: internet-facing
+      alb.ingress.kubernetes.io/target-type: ip
+      alb.ingress.kubernetes.io/certificate-arn: ${acm_cert_arn}
+      alb.ingress.kubernetes.io/healthcheck-path: /healthz
+      # alb.ingress.kubernetes.io/success-codes: 200-310
+    hosts:
+      - ${hostname}
+    ingressClassName: alb
+    # tls:
+    # - secretName: argocd-tls-certificate
+    #   hosts:
+    #     - ${hostname}
+
+redis-ha:
+  enabled: false
+
+controller:
+  enableStatefulSet: true
+
+repoServer:
+  autoscaling:
+    enabled: true
+    minReplicas: 2
