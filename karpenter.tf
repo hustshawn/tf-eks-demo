@@ -31,17 +31,17 @@ module "karpenter" {
 ################################################################################
 
 resource "helm_release" "karpenter" {
-  name                = "karpenter"
-  namespace           = local.namespace
-  create_namespace    = true
-  repository          = "oci://public.ecr.aws/karpenter"
+  name             = "karpenter"
+  namespace        = local.namespace
+  create_namespace = true
+  repository       = "oci://public.ecr.aws/karpenter"
   # To avoid 403 error from public ECR
   # ref: https://github.com/aws/karpenter-provider-aws/issues/6357
   # repository_username = data.aws_ecrpublic_authorization_token.token.user_name
   # repository_password = data.aws_ecrpublic_authorization_token.token.password
-  chart               = "karpenter"
-  version             = "1.0.2"
-  wait                = false
+  chart   = "karpenter"
+  version = "1.0.2"
+  wait    = false
 
   values = [
     <<-EOT

@@ -26,6 +26,9 @@ module "eks_blueprints_addons" {
         }
       })
     }
+    metrics-server                  = { most_recent = true }
+    eks-node-monitoring-agent       = { most_recent = true }
+    amazon-cloudwatch-observability = { most_recent = true }
   }
 
   enable_aws_load_balancer_controller = true
@@ -39,7 +42,8 @@ module "eks_blueprints_addons" {
     ]
   }
 
-  enable_metrics_server        = true
+  # EKS Managed Addons included metrics-server
+  enable_metrics_server        = false
   enable_kube_prometheus_stack = true
   kube_prometheus_stack = {
     values = [
@@ -47,7 +51,7 @@ module "eks_blueprints_addons" {
         ingressClassName = "alb"
         grafana_host     = local.grafana_host
         acm_cert_arn     = data.aws_acm_certificate.issued.arn
-        slack_api_url = var.slack_api_url
+        slack_api_url    = var.slack_api_url
       })
     ]
   }
@@ -132,4 +136,23 @@ module "ebs_csi_driver_irsa" {
   }
 
   tags = local.tags
+}
+
+module "aws_cloudwatch_observability_pod_identity" {
+  source  = "terraform-aws-modules/eks-pod-identity/aws"
+  version = "~> 1.9.0"
+
+  name = "aws-cloudwatch-observability"
+
+  attach_aws_cloudwatch_observability_policy = true
+
+  tags = local.tags
+}
+
+# Create Pod Identity associations for the service account
+resource "aws_eks_pod_identity_association" "aws_cloudwatch_observability" {
+  cluster_name    = module.eks.cluster_name
+  namespace       = "amazon-cloudwatch"
+  service_account = "cloudwatch-agent"
+  role_arn        = module.aws_cloudwatch_observability_pod_identity.iam_role_arn
 }

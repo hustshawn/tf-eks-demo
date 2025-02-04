@@ -7,7 +7,7 @@ module "eks" {
   version = "~> 20.31"
 
   cluster_name    = local.name
-  cluster_version = "1.30"
+  cluster_version = "1.31"
 
   # Give the Terraform identity admin access to the cluster
   # which will allow it to deploy resources into the cluster
@@ -35,6 +35,13 @@ module "eks" {
     kube-proxy             = { most_recent = true }
     vpc-cni                = { most_recent = true }
   }
+
+  # For migration to EKS Auto Mode only
+  # bootstrap_self_managed_addons = true
+  # cluster_compute_config = {
+  #   enabled    = true
+  #   node_pools = ["general-purpose", "system"]
+  # }
 
   vpc_id     = module.vpc.vpc_id
   subnet_ids = module.vpc.private_subnets

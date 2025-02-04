@@ -14,10 +14,9 @@ terraform {
 
   ##  Used for end-to-end testing on project; update to suit your needs
   backend "s3" {
-    bucket  = "tf-eks-remote-states"
-    region  = "ap-southeast-1"
-    key     = "e2e/tf-eks-demo/terraform.tfstate"
-    profile = "account-a"
+    bucket = "tf-eks-remote-states"
+    region = "ap-southeast-1"
+    key    = "e2e/tf-eks-demo/terraform.tfstate"
   }
 }
 
