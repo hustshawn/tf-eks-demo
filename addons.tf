@@ -33,7 +33,7 @@ module "eks_blueprints_addons" {
 
   enable_aws_load_balancer_controller = true
   aws_load_balancer_controller = {
-    chart_version = "1.9.2"
+    chart_version = "1.11.0"
     set = [
       {
         name  = "vpcId" # explicitly set the vpcId, otherwise it may not able to retrieve the vpcId from the node

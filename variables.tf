@@ -7,7 +7,7 @@ variable "vpc_cidr" {
 
 variable "region" {
   type        = string
-  default     = "ap-southeast-1"
+  default     = "us-west-2"
   description = "The AWS region to deploy the resources"
 }
 

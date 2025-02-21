@@ -4,3 +4,5 @@ planfile
 *.tfvars
 
 .DS_Store
+
+temp

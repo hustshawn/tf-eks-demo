@@ -39,9 +39,9 @@ resource "helm_release" "karpenter" {
   # ref: https://github.com/aws/karpenter-provider-aws/issues/6357
   # repository_username = data.aws_ecrpublic_authorization_token.token.user_name
   # repository_password = data.aws_ecrpublic_authorization_token.token.password
-  chart   = "karpenter"
-  version = "1.0.2"
-  wait    = false
+  chart               = "karpenter"
+  version             = "1.1.3"
+  wait                = false
 
   values = [
     <<-EOT
@@ -63,4 +63,68 @@ resource "helm_release" "karpenter" {
       repository_password
     ]
   }
+}
+
+################################################################################
+# Karpenter Node Class & Node Pool
+################################################################################
+
+resource "kubectl_manifest" "karpenter_node_class" {
+  depends_on = [helm_release.karpenter]
+  yaml_body  = <<-YAML
+apiVersion: karpenter.k8s.aws/v1
+kind: EC2NodeClass
+metadata:
+  name: default
+spec:
+  amiSelectorTerms:
+  - alias: al2023@latest
+  role: ${module.eks.cluster_name}
+  subnetSelectorTerms:
+  - tags:
+      karpenter.sh/discovery: ${module.eks.cluster_name}
+  securityGroupSelectorTerms:
+  - tags:
+      karpenter.sh/discovery: ${module.eks.cluster_name}
+  tags:
+    karpenter.sh/discovery: ${module.eks.cluster_name}
+YAML
+}
+
+resource "kubectl_manifest" "karpenter_node_pool" {
+  depends_on = [
+    helm_release.karpenter,
+    kubectl_manifest.karpenter_node_class
+  ]
+  yaml_body = <<-YAML
+apiVersion: karpenter.sh/v1
+kind: NodePool
+metadata:
+  name: default
+spec:
+  template:
+    spec:
+      nodeClassRef:
+        group: karpenter.k8s.aws
+        kind: EC2NodeClass
+        name: default
+      requirements:
+      - key: "karpenter.k8s.aws/instance-category"
+        operator: In
+        values: [ "c", "m", "r" ]
+      - key: "karpenter.k8s.aws/instance-cpu"
+        operator: In
+        values: [ "4", "8", "16", "32" ]
+      - key: "karpenter.k8s.aws/instance-hypervisor"
+        operator: In
+        values: [ "nitro" ]
+      - key: "karpenter.k8s.aws/instance-generation"
+        operator: Gt
+        values: [ "2" ]
+  limits:
+    cpu: 1000
+  disruption:
+    consolidationPolicy: WhenEmpty
+    consolidateAfter: 30s
+YAML
 }
