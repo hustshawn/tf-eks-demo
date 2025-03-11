@@ -28,3 +28,15 @@ variable "slack_api_url" {
   default     = "https://hooks.slack.com/services/xxxxxxx"
   description = "The Slack API URL used for the Prometheus Alertmanager"
 }
+
+variable "enable_nvidia_device_plugin" {
+  type        = bool
+  default     = false
+  description = "Whether to enable the NVIDIA Device Plugin"
+}
+
+variable "enable_aws_efa_device_plugin" {
+  type        = bool
+  default     = false
+  description = "Whether to enable the AWS EFA Device Plugin"
+}

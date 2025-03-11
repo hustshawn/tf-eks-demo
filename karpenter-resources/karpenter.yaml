@@ -5,7 +5,8 @@ metadata:
   name: default
 spec:
   amiSelectorTerms:
-  - alias: bottlerocket@latest
+  # - alias: bottlerocket@latest
+  - alias: al2023@latest
   role: tf-eks-demo
   subnetSelectorTerms:
   - tags:

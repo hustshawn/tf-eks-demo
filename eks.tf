@@ -16,6 +16,21 @@ module "eks" {
 
   cluster_addons = {
     # Enable after creation to run on Karpenter managed nodes
+    vpc-cni = {
+      enabled                     = true
+      most_recent                 = true
+      resolve_conflicts_on_update = "OVERWRITE"
+      before_compute              = true
+      configuration_values = jsonencode({
+        # enableNetworkPolicy : "true"
+        env = {
+          # Reference docs https://docs.aws.amazon.com/eks/latest/userguide/cni-increase-ip-addresses.html
+          ENABLE_PREFIX_DELEGATION = "true"
+          WARM_PREFIX_TARGET       = "1"
+          # ENABLE_POD_ENI           = "true"
+        }
+      })
+    }
     coredns = {
       enabled                     = true
       most_recent                 = true
@@ -31,9 +46,8 @@ module "eks" {
         }
       })
     }
-    eks-pod-identity-agent = { most_recent = true }
     kube-proxy             = { most_recent = true }
-    vpc-cni                = { most_recent = true }
+    eks-pod-identity-agent = { most_recent = true }
   }
 
   # For migration to EKS Auto Mode only
@@ -42,6 +56,7 @@ module "eks" {
   #   enabled    = true
   #   node_pools = ["general-purpose", "system"]
   # }
+  enable_efa_support = true
 
   vpc_id     = module.vpc.vpc_id
   subnet_ids = module.vpc.private_subnets
@@ -68,6 +83,18 @@ module "eks" {
     }
   }
 
+  # Add the EFA security group to the node security group
+  node_security_group_additional_rules = {
+    efa_all = {
+      description = "Allow all traffic for EFA communication"
+      protocol    = "-1"
+      from_port   = 0
+      to_port     = 0
+      type        = "ingress"
+      self        = true
+    }
+  }
+
   tags = merge(local.tags, {
     # NOTE - if creating multiple security groups with this module, only tag the
     # security group that Karpenter should utilize with the following tag
@@ -76,6 +103,17 @@ module "eks" {
   })
 }
 
+
+# output "eks_module_name" {
+#   value = module.eks
+# }
+
+
+
+import {
+  to = module.eks.aws_eks_access_entry.this["cluster_creator"]
+  id = "${local.name}:arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/Admin"
+}
 #---------------------------------------------------------------
 # Disable default GP2 Storage Class
 #---------------------------------------------------------------

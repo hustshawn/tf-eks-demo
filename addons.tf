@@ -26,8 +26,8 @@ module "eks_blueprints_addons" {
         }
       })
     }
-    metrics-server                  = { most_recent = true }
-    eks-node-monitoring-agent       = { most_recent = true }
+    metrics-server = { most_recent = true }
+    # eks-node-monitoring-agent       = { most_recent = true }
     amazon-cloudwatch-observability = { most_recent = true }
   }
 
@@ -43,7 +43,7 @@ module "eks_blueprints_addons" {
   }
 
   # EKS Managed Addons included metrics-server
-  enable_metrics_server        = false
+
   enable_kube_prometheus_stack = true
   kube_prometheus_stack = {
     values = [
@@ -89,10 +89,10 @@ module "eks_blueprints_addons" {
     #   namespace        = "nvidia-device-plugin"
     #   create_namespace = true
     #   chart            = "nvidia-device-plugin"
-    #   chart_version    = "0.14.0"
+    #   chart_version    = "0.17.0"
     #   repository       = "https://nvidia.github.io/k8s-device-plugin"
     #   values           = [file("${path.module}/kubernetes/nvidia-device-plugin/values.yaml")]
-    # }
+    # },
     prometheus-adapter = {
       description      = "A Helm chart for Prometheus Adapter"
       namespace        = "prometheus-adapter"
@@ -117,7 +117,6 @@ module "eks_blueprints_addons" {
     "Environment" = "dev"
   })
 }
-
 
 
 module "ebs_csi_driver_irsa" {
@@ -155,4 +154,39 @@ resource "aws_eks_pod_identity_association" "aws_cloudwatch_observability" {
   namespace       = "amazon-cloudwatch"
   service_account = "cloudwatch-agent"
   role_arn        = module.aws_cloudwatch_observability_pod_identity.iam_role_arn
+}
+
+
+resource "helm_release" "nvidia_device_plugin" {
+  count      = var.enable_nvidia_device_plugin ? 1 : 0
+  name       = "nvidia-device-plugin"
+  repository = "https://nvidia.github.io/k8s-device-plugin"
+  chart      = "nvidia-device-plugin"
+  version    = "0.17.0"
+  # version          = "0.16.2"
+  namespace        = "nvidia-device-plugin"
+  create_namespace = true
+  wait             = false
+}
+
+resource "helm_release" "aws_efa_device_plugin" {
+  count = var.enable_aws_efa_device_plugin ? 1 : 0
+  name  = "aws-efa-k8s-device-plugin"
+  # https://github.com/aws/eks-charts/tree/master/stable/aws-efa-k8s-device-plugin
+  repository = "https://aws.github.io/eks-charts"
+  chart      = "aws-efa-k8s-device-plugin"
+  version    = "v0.5.7"
+  namespace  = "kube-system"
+  wait       = false
+
+  values = [
+    <<-EOT
+      nodeSelector:
+        vpc.amazonaws.com/efa.present: 'true'
+      tolerations:
+        - key: nvidia.com/gpu
+          operator: Exists
+          effect: NoSchedule
+    EOT
+  ]
 }

@@ -15,6 +15,9 @@ fi
 # Delete the Ingress from all namespaces
 kubectl delete ingress --all --all-namespaces
 
+# Delete the Karpenter node pools so that trigger the deletion of the nodes
+kubectl delete nodepool --all
+
 # List of Terraform modules to apply in sequence
 targets=(
   "module.eks_blueprints_addons"

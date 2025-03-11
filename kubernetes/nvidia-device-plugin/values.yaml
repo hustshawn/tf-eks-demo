@@ -8,3 +8,10 @@ nfd:
       operator: Exists
       effect: NoSchedule
     - operator: "Exists"
+    # affinity:
+    #   nodeAffinity:
+    #     requiredDuringSchedulingIgnoredDuringExecution:
+    #       nodeSelectorTerms:
+    #       - matchExpressions:
+    #         - key: nvidia.com/gpu
+    #           operator: Exists
