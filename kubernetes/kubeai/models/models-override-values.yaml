@@ -1,0 +1,67 @@
+catalog:
+  llama-3.1-8b-instruct-fp8-l40s:
+    enabled: false
+    features: [ TextGeneration ]
+    url: hf://neuralmagic/Meta-Llama-3.1-8B-Instruct-FP8
+    engine: VLLM
+    env:
+      VLLM_WORKER_MULTIPROC_METHOD: spawn
+    args:
+    - --max-model-len=16384
+    - --max-num-batched-token=16384
+    - --gpu-memory-utilization=0.9
+    - --disable-log-requests
+    resourceProfile: nvidia-gpu-l40s:1
+    minReplicas: 1 # by default this is 0
+  llama-3.1-70b-instruct-fp8-l40s:
+    enabled: false
+    features: [ TextGeneration ]
+    url: hf://neuralmagic/Meta-Llama-3.1-70B-Instruct-FP8
+    engine: VLLM
+    env:
+      VLLM_ATTENTION_BACKEND: FLASHINFER
+    args:
+    - --max-model-len=32768
+    - --max-num-batched-token=32768
+    - --max-num-seqs=512
+    - --gpu-memory-utilization=0.9
+    # Pipeline parallelism performs better than tensor over PCI.
+    - --pipeline-parallel-size=2
+    # A minimum of tensor parallel 2 was needed to not have OOM errors.
+    # We use 8 GPUs so parallelism strategy of 4 x 2 works well.
+    - --tensor-parallel-size=4
+    - --enable-prefix-caching
+    - --enable-chunked-prefill=false
+    - --disable-log-requests
+    - --kv-cache-dtype=fp8
+    # Enforce eager wasn't supported with FLASHINFER.
+    - --enforce-eager
+    resourceProfile: nvidia-gpu-l40s:8
+    targetRequests: 500
+    minReplicas: 1 # by default this is 0
+  deepseek-r1-distill-llama-8b-l40s:
+    enabled: false
+    features: [ TextGeneration ]
+    url: "hf://deepseek-ai/DeepSeek-R1-Distill-Llama-8B"
+    env:
+      VLLM_ATTENTION_BACKEND: "FLASHINFER"
+      # VLLM_USE_V1: "1"
+    args:
+    - --max-model-len=8192
+    - --max-num-batched-token=8192
+    - --max-num-seqs=256
+    - --gpu-memory-utilization=0.95
+    - --kv-cache-dtype=fp8
+    - --disable-log-requests
+    - --quantization=fp8
+    - --enforce-eager
+    engine: VLLM
+    resourceProfile: 'nvidia-gpu-l40s:1'
+    minReplicas: 1 # by default this is 0
+  gemma-3-12b-ollama-l40s:
+    enabled: false
+    features: [ TextGeneration ]
+    url: 'ollama://gemma3:12b'
+    engine: OLlama
+    resourceProfile: 'nvidia-gpu-l40s:1'
+    minReplicas: 1 # by default this is 0

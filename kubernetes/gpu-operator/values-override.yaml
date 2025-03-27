@@ -1,0 +1,31 @@
+# Helm Values: https://github.com/NVIDIA/gpu-operator/blob/main/deployments/gpu-operator/values.yaml
+driver:
+  enabled: true
+  repository: nvcr.io/nvidia
+  image: driver
+  # Commented this as latest Ubuntu AMIs are failing with this option enabled
+  # version: "515-signed" # supported DRIVER_BRANCH value currently are 470, 510 and 515 which will install latest drivers available on that branch for current running kernel version.
+  manager:
+    image: k8s-driver-manager
+    repository: nvcr.io/nvidia/cloud-native
+
+dcgm:
+  enabled: false
+
+dcgmExporter:
+  enabled: false # as cloudwatch already created it
+
+gfd:
+  enabled: false
+
+migManager:
+  enabled: false
+
+gds:
+  enabled: false
+
+vgpuManager:
+  enabled: false
+
+vgpuDeviceManager:
+  enabled: false
