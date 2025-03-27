@@ -204,13 +204,15 @@ locals {
 }
 
 resource "helm_release" "kubeai" {
-  name       = "kubeai"
-  chart      = "kubeai"
-  repository = local.kubeai_repository
-  version    = local.kubeai_version
-  namespace  = local.kubeai_namespace
-  wait       = false
-  values     = [templatefile("${path.module}/kubernetes/kubeai/kubeai/kubeai-override-values.yaml", {})]
+  name             = "kubeai"
+  chart            = "kubeai"
+  repository       = local.kubeai_repository
+  version          = local.kubeai_version
+  namespace        = local.kubeai_namespace
+  create_namespace = true
+  replace          = true
+  wait             = false
+  values           = [templatefile("${path.module}/kubernetes/kubeai/kubeai/kubeai-override-values.yaml", {})]
 }
 
 resource "helm_release" "kubeai_models" {
