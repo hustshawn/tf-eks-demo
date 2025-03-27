@@ -39,7 +39,7 @@ resource "helm_release" "karpenter" {
   # ref: https://github.com/aws/karpenter-provider-aws/issues/6357
   # repository_username = data.aws_ecrpublic_authorization_token.token.user_name
   # repository_password = data.aws_ecrpublic_authorization_token.token.password
-  chart = "karpenter"
+  chart   = "karpenter"
   version = "1.2.1"
   wait    = false
 
@@ -55,6 +55,11 @@ resource "helm_release" "karpenter" {
         eks.amazonaws.com/role-arn: ${module.karpenter.iam_role_arn}
     webhook:
       enabled: false
+    controller:
+      resources:
+        limits:
+          cpu: 1
+          memory: 1Gi
     EOT
   ]
 
@@ -200,4 +205,73 @@ spec:
     consolidationPolicy: WhenEmpty
     consolidateAfter: 30s
 YAML
+}
+
+# FlowSchema
+resource "kubectl_manifest" "karpenter_controller_flow_schema" {
+  yaml_body = <<-YAML
+apiVersion: flowcontrol.apiserver.k8s.io/v1
+kind: FlowSchema
+metadata:
+  name: karpenter-workload
+spec:
+  distinguisherMethod:
+    type: ByUser
+  matchingPrecedence: 1000
+  priorityLevelConfiguration:
+    name: workload-high
+  rules:
+  - nonResourceRules:
+    - nonResourceURLs:
+      - '*'
+      verbs:
+      - '*'
+    resourceRules:
+    - apiGroups:
+      - '*'
+      clusterScope: true
+      namespaces:
+      - '*'
+      resources:
+      - '*'
+      verbs:
+      - '*'
+    subjects:
+    - kind: ServiceAccount
+      serviceAccount:
+        name: karpenter
+        namespace: "${helm_release.karpenter.namespace}"
+  YAML
+}
+
+resource "kubectl_manifest" "karpenter_leader_election_flow_schema" {
+  yaml_body = <<-YAML
+apiVersion: flowcontrol.apiserver.k8s.io/v1
+kind: FlowSchema
+metadata:
+  name: karpenter-leader-election
+spec:
+  distinguisherMethod:
+    type: ByUser
+  matchingPrecedence: 200
+  priorityLevelConfiguration:
+    name: leader-election
+  rules:
+  - resourceRules:
+    - apiGroups:
+      - coordination.k8s.io
+      namespaces:
+      - '*'
+      resources:
+      - leases
+      verbs:
+      - get
+      - create
+      - update
+    subjects:
+    - kind: ServiceAccount
+      serviceAccount:
+        name: karpenter
+        namespace: "${helm_release.karpenter.namespace}"
+  YAML
 }

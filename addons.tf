@@ -63,6 +63,7 @@ module "eks_blueprints_addons" {
 
   enable_ingress_nginx = true
   ingress_nginx = {
+    # chart_version = "4.12.1"
     values = [templatefile("${path.module}/kubernetes/ingress-nginx/custom-values.yaml", {
       ssl_cert_arn = data.aws_acm_certificate.issued.arn
     })]
@@ -157,16 +158,17 @@ resource "aws_eks_pod_identity_association" "aws_cloudwatch_observability" {
 }
 
 
-resource "helm_release" "nvidia_device_plugin" {
-  count      = var.enable_nvidia_device_plugin ? 1 : 0
-  name       = "nvidia-device-plugin"
-  repository = "https://nvidia.github.io/k8s-device-plugin"
-  chart      = "nvidia-device-plugin"
-  version    = "0.17.0"
-  # version          = "0.16.2"
-  namespace        = "nvidia-device-plugin"
+resource "helm_release" "nvidia_gpu_operator" {
+  count            = var.enable_nvidia_device_plugin ? 1 : 0 # Reusing the same variable for now
+  name             = "gpu-operator"
+  repository       = "https://helm.ngc.nvidia.com/nvidia"
+  chart            = "gpu-operator"
+  version          = "v24.9.2" # Latest stable version as of now
+  namespace        = "gpu-operator"
   create_namespace = true
-  wait             = false
+  wait             = true
+
+  values = [templatefile("${path.module}/kubernetes/gpu-operator/values-override.yaml", {})]
 }
 
 resource "helm_release" "aws_efa_device_plugin" {
@@ -189,4 +191,35 @@ resource "helm_release" "aws_efa_device_plugin" {
           effect: NoSchedule
     EOT
   ]
+}
+##########################################################################
+# Kubeai
+# Debug:
+#     helm upgrade --install kubeai-models -n kubeai kubeai/models -f kubernetes/kubeai/models/models-override-values.yaml
+##########################################################################
+locals {
+  kubeai_version    = "0.19.0"
+  kubeai_namespace  = "kubeai"
+  kubeai_repository = "https://www.kubeai.org"
+}
+
+resource "helm_release" "kubeai" {
+  name       = "kubeai"
+  chart      = "kubeai"
+  repository = local.kubeai_repository
+  version    = local.kubeai_version
+  namespace  = local.kubeai_namespace
+  wait       = false
+  values     = [templatefile("${path.module}/kubernetes/kubeai/kubeai/kubeai-override-values.yaml", {})]
+}
+
+resource "helm_release" "kubeai_models" {
+  name       = "kubeai-models"
+  chart      = "models"
+  repository = local.kubeai_repository
+  version    = local.kubeai_version
+  namespace  = local.kubeai_namespace
+  wait       = false
+  values     = [templatefile("${path.module}/kubernetes/kubeai/models/models-override-values.yaml", {})]
+  depends_on = [helm_release.kubeai]
 }
