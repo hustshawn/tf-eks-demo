@@ -41,6 +41,8 @@ module "eks_blueprints_addons" {
       },
     ]
   }
+  # enable_aws_efs_csi_driver = true
+  enable_aws_efs_csi_driver = true
 
   # EKS Managed Addons included metrics-server
 
@@ -63,7 +65,7 @@ module "eks_blueprints_addons" {
 
   enable_ingress_nginx = true
   ingress_nginx = {
-    # chart_version = "4.12.1"
+    chart_version = "4.12.1"
     values = [templatefile("${path.module}/kubernetes/ingress-nginx/custom-values.yaml", {
       ssl_cert_arn = data.aws_acm_certificate.issued.arn
     })]

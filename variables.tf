@@ -40,3 +40,8 @@ variable "enable_aws_efa_device_plugin" {
   default     = false
   description = "Whether to enable the AWS EFA Device Plugin"
 }
+
+variable "capacity_reservation_id" {
+  type        = string
+  description = "The ID of the capacity reservation"
+}
