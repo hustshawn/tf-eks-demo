@@ -131,7 +131,7 @@ resource "kubectl_manifest" "karpenter_node_pool" {
       cpu: 1000
     disruption:
       consolidationPolicy: WhenEmpty
-      consolidateAfter: 30s
+      consolidateAfter: 300s
   YAML
 }
 
@@ -148,6 +148,12 @@ spec:
   amiSelectorTerms:
   - alias: al2023@latest
   instanceStorePolicy: RAID0
+  blockDeviceMappings:
+    - deviceName: /dev/xvda
+      ebs:
+        volumeSize: 500Gi
+        volumeType: gp3
+        encrypted: true
   metadataOptions:
     httpEndpoint: enabled
     httpProtocolIPv6: disabled
@@ -176,11 +182,20 @@ kind: NodePool
 metadata:
   name: gpu-nodepool
 spec:
+  disruption:
+    budgets:
+    - nodes: 10%
+    consolidateAfter: 300s
+    consolidationPolicy: WhenEmpty
+  limits:
+    cpu: 5000
   template:
     metadata:
       labels:
         owner: data-engineer
+        vpc.amazonaws.com/efa.present: "true"
     spec:
+      expireAfter: 720h
       nodeClassRef:
         group: karpenter.k8s.aws
         kind: EC2NodeClass
@@ -192,7 +207,7 @@ spec:
       requirements:
         - key: "karpenter.k8s.aws/instance-family"
           operator: In
-          values: [ "g5", "g6", "g6e", "p4", "p4d", "p5", "p5en" ]
+          values: ["g6", "g6e", "p4", "p4d", "p5", "p5en" ]
         - key: "kubernetes.io/arch"
           operator: In
           values: [ "amd64" ]

@@ -1,0 +1,125 @@
+apiVersion: leaderworkerset.x-k8s.io/v1
+kind: LeaderWorkerSet
+metadata:
+  name: vllm
+spec:
+  replicas: 1
+  leaderWorkerTemplate:
+    size: 2
+    restartPolicy: RecreateGroupOnPodRestart
+    leaderTemplate:
+      metadata:
+        labels:
+          role: leader
+      spec:
+        nodeSelector:
+          node.kubernetes.io/instance-type: g6e.4xlarge
+        # affinity:
+        #   nodeAffinity:
+        #     requiredDuringSchedulingIgnoredDuringExecution:
+        #       nodeSelectorTerms:
+        #       - matchExpressions:
+        #         - key: karpenter.k8s.aws/instance-family
+        #           operator: In
+        #           values:
+        #           - g6e
+        containers:
+        - name: vllm-leader
+          image: 985955614379.dkr.ecr.us-east-2.amazonaws.com/multi-node-vllm:vllm-20250221_174345
+          imagePullPolicy: Always
+          env:
+          # - name: HUGGING_FACE_HUB_TOKEN
+          #   value: <your-hf-token>
+          - name: NCCL_SHM_USE_CUDA_MEMCPY
+            value: '1'
+          command:
+          - sh
+          - -c
+          - '/vllm-workspace/ray_init.sh leader --ray_cluster_size=$(LWS_GROUP_SIZE); python3 -m vllm.entrypoints.openai.api_server --port 8080 --model deepseek-ai/DeepSeek-R1-Distill-Llama-8B --tensor-parallel-size 1 --pipeline_parallel_size 2'
+          resources:
+            limits:
+              nvidia.com/gpu: '1'
+              # memory: 224Gi
+              memory: 100Gi
+              # ephemeral-storage: 400Gi
+              # requests:
+              #   ephemeral-storage: 400Gi
+          ports:
+          - containerPort: 8080
+          readinessProbe:
+            tcpSocket:
+              port: 8080
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          volumeMounts:
+          - mountPath: /dev/shm
+            name: dshm
+        tolerations:
+        - key: nvidia.com/gpu
+          operator: Exists
+          effect: NoSchedule
+        volumes:
+        - name: dshm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 15Gi
+    workerTemplate:
+      spec:
+        nodeSelector:
+          node.kubernetes.io/instance-type: g6e.4xlarge
+        # affinity:
+        #   nodeAffinity:
+        #     requiredDuringSchedulingIgnoredDuringExecution:
+        #       nodeSelectorTerms:
+        #       - matchExpressions:
+        #         - key: karpenter.k8s.aws/instance-family
+        #           operator: In
+        #           values:
+        #           - g6e
+        containers:
+        - name: vllm-worker
+          image: 985955614379.dkr.ecr.us-east-2.amazonaws.com/multi-node-vllm:vllm-20250221_174345
+          imagePullPolicy: Always
+          command:
+          - sh
+          - -c
+          - '/vllm-workspace/ray_init.sh worker --ray_address=$(LWS_LEADER_ADDRESS)'
+          resources:
+            limits:
+              nvidia.com/gpu: '1'
+              memory: 100Gi
+            #   ephemeral-storage: 400Gi
+            # requests:
+            #   ephemeral-storage: 400Gi
+          env:
+          # - name: HUGGING_FACE_HUB_TOKEN
+          #   value: <your-hf-token>
+          - name: NCCL_SHM_USE_CUDA_MEMCPY
+            value: '1'
+          volumeMounts:
+          - mountPath: /dev/shm
+            name: dshm
+        tolerations:
+        - key: nvidia.com/gpu
+          operator: Exists
+          effect: NoSchedule
+        volumes:
+        - name: dshm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 15Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vllm-leader
+spec:
+  ports:
+  - name: http
+    port: 8080
+    protocol: TCP
+    targetPort: 8080
+  selector:
+    leaderworkerset.sigs.k8s.io/name: vllm
+    role: leader
+  type: ClusterIP

@@ -1,0 +1,1 @@
+kubectl apply --server-side -k https://github.com/kubernetes-sigs/lws/config/default?ref=main
