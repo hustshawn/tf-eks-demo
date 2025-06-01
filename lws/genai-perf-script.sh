@@ -1,8 +1,8 @@
 export CONCURRENCY=20
 export NUM_PROMPTS=100
-export MODEL=deepseek-ai/DeepSeek-R1-Distill-Qwen-32B
-export TOKENIZER=Qwen/Qwen2.5-32B-Instruct
-genai-perf profile --url sglang-leader:40000 \
+export MODEL=deepseek-ai/DeepSeek-R1
+export TOKENIZER=deepseek-ai/DeepSeek-R1
+genai-perf profile --url deepseek-r1-leader \
   -m $MODEL \
   --service-kind openai \
   --endpoint-type completions \

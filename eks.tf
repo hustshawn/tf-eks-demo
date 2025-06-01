@@ -98,7 +98,7 @@ module "eks" {
   eks_managed_node_groups = {
 
     ng-1 = {
-      create         = true
+      create         = false
       min_size       = 1
       max_size       = 2
       desired_size   = 2

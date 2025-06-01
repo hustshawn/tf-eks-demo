@@ -4,7 +4,7 @@ This repository demonstrates Terraform configurations for deploying a production
 
 ## Features
 
-- EKS cluster (v1.30) with managed node groups
+- EKS cluster (v1.32) with managed node groups
 - Karpenter for auto-scaling
 - Monitoring stack:
   - Prometheus
