@@ -207,7 +207,7 @@ spec:
       requirements:
         - key: "karpenter.k8s.aws/instance-family"
           operator: In
-          values: ["g6", "g6e", "p4", "p4d", "p5", "p5en" ]
+          values: ["g6", "g6e", "p4", "p4d", "p5", "p5en", "p6-b200" ]
         - key: "kubernetes.io/arch"
           operator: In
           values: [ "amd64" ]

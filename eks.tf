@@ -7,7 +7,7 @@ module "eks" {
   version = "~> 20.31"
 
   cluster_name    = local.name
-  cluster_version = "1.31"
+  cluster_version = "1.32"
 
   # Give the Terraform identity admin access to the cluster
   # which will allow it to deploy resources into the cluster
@@ -83,19 +83,47 @@ module "eks" {
     }
   }
 
-  # Add the EFA security group to the node security group
-  node_security_group_additional_rules = {
-    efa_all = {
-      description = "Allow all traffic for EFA communication"
-      protocol    = "-1"
-      from_port   = 0
-      to_port     = 0
-      type        = "ingress"
-      self        = true
-    }
-  }
+  # # Add the EFA security group to the node security group
+  # node_security_group_additional_rules = {
+  #   efa_all = {
+  #     description = "Allow all traffic for EFA communication"
+  #     protocol    = "-1"
+  #     from_port   = 0
+  #     to_port     = 0
+  #     type        = "ingress"
+  #     self        = true
+  #   }
+  # }
 
   eks_managed_node_groups = {
+
+    ng-1 = {
+      create         = true
+      min_size       = 1
+      max_size       = 2
+      desired_size   = 2
+      instance_types = ["m5.xlarge"]
+      capacity_type  = "SPOT"
+      block_device_mappings = {
+        xvda = {
+          device_name = "/dev/xvda"
+          ebs = {
+            volume_size = 800
+            volume_type = "gp3"
+            iops        = 3000
+            throughput  = 150
+            # encrypted             = true
+            # kms_key_id            = module.ebs_kms_key.key_arn
+            delete_on_termination = true
+          }
+        }
+      }
+      key_name = "mac-ed25519"
+      tags = {
+        "test" = "1"
+      }
+    }
+
     p5en-cbr = {
       create = false
       # The EKS AL2023 NVIDIA AMI provides all of the necessary components
@@ -179,7 +207,7 @@ module "eks" {
       }
     }
     p5-cbr = {
-      create = true
+      create = false
       # The EKS AL2023 NVIDIA AMI provides all of the necessary components
       # for accelerated workloads w/ EFA
       ami_type       = "AL2023_x86_64_NVIDIA"
