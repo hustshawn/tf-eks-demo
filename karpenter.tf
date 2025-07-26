@@ -40,7 +40,7 @@ resource "helm_release" "karpenter" {
   # repository_username = data.aws_ecrpublic_authorization_token.token.user_name
   # repository_password = data.aws_ecrpublic_authorization_token.token.password
   chart   = "karpenter"
-  version = "1.2.1"
+  version = "1.6.1"
   wait    = false
 
   values = [
@@ -290,3 +290,98 @@ spec:
         namespace: "${helm_release.karpenter.namespace}"
   YAML
 }
+
+################################################################################
+# Reserved Capacity NodeClass & NodePool
+################################################################################
+
+resource "kubectl_manifest" "karpenter_reserved_capacity_node_class" {
+  depends_on = [helm_release.karpenter]
+
+  yaml_body = <<-YAML
+apiVersion: karpenter.k8s.aws/v1
+kind: EC2NodeClass
+metadata:
+  name: reserved-capacity
+spec:
+  amiFamily: AL2023
+  amiSelectorTerms:
+  - alias: al2023@latest
+  instanceStorePolicy: RAID0
+  blockDeviceMappings:
+    - deviceName: /dev/xvda
+      ebs:
+        volumeSize: 800Gi
+        volumeType: gp3
+        iops: 3000
+        throughput: 150
+        encrypted: true
+        deleteOnTermination: true
+  metadataOptions:
+    httpEndpoint: enabled
+    httpProtocolIPv6: disabled
+    httpPutResponseHopLimit: 1
+    httpTokens: required
+  role: ${module.eks.cluster_name}
+  subnetSelectorTerms:
+  - tags:
+      karpenter.sh/discovery: ${module.eks.cluster_name}
+  securityGroupSelectorTerms:
+  - tags:
+      karpenter.sh/discovery: ${module.eks.cluster_name}
+  capacityReservationSelectorTerms:
+  - id: ${var.capacity_reservation_id}
+  tags:
+    karpenter.sh/discovery: ${module.eks.cluster_name}
+YAML
+}
+
+resource "kubectl_manifest" "karpenter_reserved_capacity_node_pool" {
+  depends_on = [
+    helm_release.karpenter,
+    kubectl_manifest.karpenter_reserved_capacity_node_class
+  ]
+
+  yaml_body = <<-YAML
+apiVersion: karpenter.sh/v1
+kind: NodePool
+metadata:
+  name: reserved-capacity-pool
+spec:
+  template:
+    metadata:
+      labels:
+        vpc.amazonaws.com/efa.present: "true"
+        nvidia.com/gpu.present: "true"
+    spec:
+      expireAfter: 720h
+      nodeClassRef:
+        group: karpenter.k8s.aws
+        kind: EC2NodeClass
+        name: reserved-capacity
+      taints:
+        - key: nvidia.com/gpu
+          value: "true"
+          effect: "NoSchedule"
+      requirements:
+      - key: "karpenter.sh/capacity-type"
+        operator: In
+        values: ["reserved", "on-demand"]
+      - key: "karpenter.k8s.aws/instance-family"
+        operator: In
+        values: ["p4", "p4d", "p5", "p5en"]
+      - key: "kubernetes.io/arch"
+        operator: In
+        values: ["amd64"]
+      - key: "karpenter.k8s.aws/instance-hypervisor"
+        operator: In
+        values: ["nitro"]
+  limits:
+    cpu: 5000
+  disruption:
+    consolidationPolicy: WhenEmpty
+    consolidateAfter: 300s
+YAML
+}
+
+
