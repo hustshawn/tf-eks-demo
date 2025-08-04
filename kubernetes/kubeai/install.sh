@@ -1,0 +1,1 @@
+helm upgrade --install kubeai-models -n kubeai kubeai/models -f kubernetes/kubeai/models/models-override-values.yaml 
