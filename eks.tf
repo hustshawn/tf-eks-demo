@@ -7,7 +7,7 @@ module "eks" {
   version = "~> 20.31"
 
   cluster_name    = local.name
-  cluster_version = "1.33"
+  cluster_version = "1.34"
 
   # Give the Terraform identity admin access to the cluster
   # which will allow it to deploy resources into the cluster
@@ -18,8 +18,8 @@ module "eks" {
     # Enable after creation to run on Karpenter managed nodes
     vpc-cni = {
       enabled = true
-      # most_recent                 = true
-      addon_version               = "v1.19.6-eksbuild.7"
+      # most_recent = true
+      # addon_version               = "v1.19.6-eksbuild.7"
       resolve_conflicts_on_update = "OVERWRITE"
       before_compute              = true
       configuration_values = jsonencode({
@@ -45,9 +45,38 @@ module "eks" {
           minReplicas = 2
           maxReplicas = 10
         }
+        corefile = <<-EOF
+          .:53 {
+              errors
+              health {
+                  lameduck 10s
+              }
+              ready
+              kubernetes cluster.local in-addr.arpa ip6.arpa {
+                  pods insecure
+                  fallthrough in-addr.arpa ip6.arpa
+                  ttl 30
+              }
+              prometheus :9153
+              forward . /etc/resolv.conf
+              cache 30
+              loop
+              reload
+              loadbalance
+          }
+        EOF
       })
     }
-    kube-proxy             = { most_recent = true }
+    kube-proxy = {
+      most_recent                 = true
+      resolve_conflicts_on_update = "OVERWRITE"
+      configuration_values = jsonencode({
+        mode = "ipvs"
+        ipvs = {
+          scheduler = "rr"
+        }
+      })
+    }
     eks-pod-identity-agent = { most_recent = true }
   }
 
@@ -125,9 +154,88 @@ module "eks" {
       }
     }
 
+    p5-cbr = {
+      create = false
+      # The EKS AL2023 NVIDIA AMI provides all of the necessary components
+      # for accelerated workloads w/ EFA
+      ami_type       = "AL2023_x86_64_NVIDIA"
+      instance_types = ["p5.4xlarge"]
 
+      # Mount instance store volumes in RAID-0 for kubelet and containerd
+      # https://github.com/awslabs/amazon-eks-ami/blob/master/doc/USER_GUIDE.md#raid-0-for-kubelet-and-containerd-raid0
+      cloudinit_pre_nodeadm = [
+        {
+          content_type = "application/node.eks.aws"
+          content      = <<-EOT
+            ---
+            apiVersion: node.eks.aws/v1alpha1
+            kind: NodeConfig
+            spec:
+              instance:
+                localStorage:
+                  strategy: RAID0
+          EOT
+        }
+      ]
 
+      block_device_mappings = {
+        xvda = {
+          device_name = "/dev/xvda"
+          ebs = {
+            volume_size = 800
+            volume_type = "gp3"
+            iops        = 3000
+            throughput  = 150
+            # encrypted             = true
+            # kms_key_id            = module.ebs_kms_key.key_arn
+            delete_on_termination = true
+          }
+        }
+      }
+      node_repair_config = {
+        enabled = false
+      }
 
+      min_size     = 0
+      max_size     = 2
+      desired_size = 1
+
+      # This will:
+      # 1. Create a placement group to place the instances close to one another
+      # 2. Ignore subnets that reside in AZs that do not support the instance type
+      # 3. Expose all of the available EFA interfaces on the launch template
+      enable_efa_support = false
+
+      labels = {
+        "vpc.amazonaws.com/efa.present" = "true"
+        "nvidia.com/gpu.present"        = "true"
+      }
+
+      taints = {
+        # Ensure only GPU workloads are scheduled on this node group
+        gpu = {
+          key    = "nvidia.com/gpu"
+          value  = "true"
+          effect = "NO_SCHEDULE"
+        }
+      }
+
+      # First subnet is in the "${local.region}a" availability zone
+      # where the capacity reservation is created
+      # TODO - Update the subnet to match the availability zone of *YOUR capacity reservation
+      subnet_ids = module.vpc.private_subnets
+
+      # ML capacity block reservation
+      capacity_type = "CAPACITY_BLOCK"
+      instance_market_options = {
+        market_type = "capacity-block"
+      }
+      capacity_reservation_specification = {
+        capacity_reservation_target = {
+          capacity_reservation_id = var.capacity_reservation_id
+        }
+      }
+    }
   }
 
   tags = merge(local.tags, {
