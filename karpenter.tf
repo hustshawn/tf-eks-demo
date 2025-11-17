@@ -119,8 +119,8 @@ resource "kubectl_manifest" "karpenter_node_pool" {
           operator: In
           values: [ "c", "m", "r" ]
         - key: "karpenter.k8s.aws/instance-cpu"
-          operator: In
-          values: [ "4", "8", "16", "32" ]
+          operator: Gt
+          values: [ "4" ]
         - key: "karpenter.k8s.aws/instance-hypervisor"
           operator: In
           values: [ "nitro" ]
@@ -130,7 +130,7 @@ resource "kubectl_manifest" "karpenter_node_pool" {
     limits:
       cpu: 1000
     disruption:
-      consolidationPolicy: WhenEmpty
+      consolidationPolicy: WhenEmptyOrUnderutilized
       consolidateAfter: 300s
   YAML
 }

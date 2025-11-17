@@ -33,11 +33,19 @@ module "eks_blueprints_addons" {
 
   enable_aws_load_balancer_controller = true
   aws_load_balancer_controller = {
-    chart_version = "1.11.0"
+    chart_version = "1.14.1"
     set = [
       {
         name  = "vpcId" # explicitly set the vpcId, otherwise it may not able to retrieve the vpcId from the node
         value = module.vpc.vpc_id
+      },
+      {
+        name  = "controllerConfig.featureGates.ALBGatewayAPI"
+        value = "true"
+      },
+      {
+        name  = "controllerConfig.featureGates.NLBGatewayAPI"
+        value = "true"
       },
     ]
   }
@@ -185,8 +193,42 @@ resource "helm_release" "aws_efa_device_plugin" {
 
   values = [
     <<-EOT
-      nodeSelector:
-        vpc.amazonaws.com/efa.present: 'true'
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: node.kubernetes.io/instance-type
+                operator: In
+                values:
+                # P4 family
+                - p4d.24xlarge
+                - p4de.24xlarge
+                # P5 family
+                - p5.48xlarge
+                - p5e.48xlarge
+                - p5en.48xlarge
+                # P6 family
+                - p6-b200.48xlarge
+                - p6e-gb200.36xlarge
+                # G6 family
+                - g6.xlarge
+                - g6.2xlarge
+                - g6.4xlarge
+                - g6.8xlarge
+                - g6.12xlarge
+                - g6.16xlarge
+                - g6.24xlarge
+                - g6.48xlarge
+                # G6e family
+                - g6e.xlarge
+                - g6e.2xlarge
+                - g6e.4xlarge
+                - g6e.8xlarge
+                - g6e.12xlarge
+                - g6e.16xlarge
+                - g6e.24xlarge
+                - g6e.48xlarge
       tolerations:
         - key: nvidia.com/gpu
           operator: Exists
