@@ -216,9 +216,6 @@ resource "kubectl_manifest" "karpenter_gpu_node_pool" {
             values: [ "spot", "on-demand" ]
     limits:
       cpu: 5000
-    disruption:
-      consolidationPolicy: WhenEmpty
-      consolidateAfter: 30s
   YAML
 }
 

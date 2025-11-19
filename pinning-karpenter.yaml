@@ -1,0 +1,69 @@
+apiVersion: karpenter.sh/v1
+kind: NodePool
+metadata:
+  name: pinning
+spec:
+  disruption:
+    budgets:
+    - nodes: 10%
+    consolidateAfter: 300s
+    consolidationPolicy: WhenEmpty
+  limits:
+    cpu: 1000
+  template:
+    spec:
+      expireAfter: 720h
+      nodeClassRef:
+        group: karpenter.k8s.aws
+        kind: EC2NodeClass
+        name: pinning
+      requirements:
+      - key: karpenter.k8s.aws/instance-category
+        operator: In
+        values:
+        - c
+      - key: karpenter.k8s.aws/instance-cpu
+        operator: Gt
+        values:
+        - "4"
+      - key: karpenter.k8s.aws/instance-hypervisor
+        operator: In
+        values:
+        - nitro
+      - key: karpenter.k8s.aws/instance-generation
+        operator: Gt
+        values:
+        - "2"
+      taints:
+      - effect: NoSchedule
+        key: cpu-pinning
+        value: "true"
+---
+apiVersion: karpenter.k8s.aws/v1
+kind: EC2NodeClass
+metadata:
+  name: pinning
+spec:
+  amiSelectorTerms:
+  - alias: al2023@latest
+  metadataOptions:
+    httpEndpoint: enabled
+    httpProtocolIPv6: disabled
+    httpPutResponseHopLimit: 1
+    httpTokens: required
+  role: tf-eks-demo
+  securityGroupSelectorTerms:
+  - tags:
+      karpenter.sh/discovery: tf-eks-demo
+  subnetSelectorTerms:
+  - tags:
+      karpenter.sh/discovery: tf-eks-demo
+  tags:
+    karpenter.sh/discovery: tf-eks-demo
+  userData: |
+    apiVersion: node.eks.aws/v1alpha1
+    kind: NodeConfig
+    spec:
+      kubelet:
+        config:
+          cpuManagerPolicy: static
