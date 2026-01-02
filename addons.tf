@@ -26,9 +26,11 @@ module "eks_blueprints_addons" {
         }
       })
     }
-    metrics-server = { most_recent = true }
+    metrics-server               = { most_recent = true }
+    aws-mountpoint-s3-csi-driver = { most_recent = true }
+    # amazon-cloudwatch-observability   = { most_recent = true }
+    aws-network-flow-monitoring-agent = { most_recent = true }
     # eks-node-monitoring-agent       = { most_recent = true }
-    amazon-cloudwatch-observability = { most_recent = true }
   }
 
   enable_aws_load_balancer_controller = true

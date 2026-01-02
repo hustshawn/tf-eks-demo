@@ -17,8 +17,8 @@ module "eks" {
   cluster_addons = {
     # Enable after creation to run on Karpenter managed nodes
     vpc-cni = {
-      enabled = true
-      # most_recent = true
+      enabled     = true
+      most_recent = true
       # addon_version               = "v1.19.6-eksbuild.7"
       resolve_conflicts_on_update = "OVERWRITE"
       before_compute              = true
