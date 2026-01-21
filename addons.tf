@@ -29,7 +29,13 @@ module "eks_blueprints_addons" {
     metrics-server               = { most_recent = true }
     aws-mountpoint-s3-csi-driver = { most_recent = true }
     # amazon-cloudwatch-observability   = { most_recent = true }
-    aws-network-flow-monitoring-agent = { most_recent = true }
+    aws-network-flow-monitoring-agent = {
+      most_recent = true
+      pod_identity_association = [{
+        role_arn        = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/AmazonEKSPodIdentityAWSNetworkFlowMonitorAgentRole"
+        service_account = "aws-network-flow-monitor-agent-service-account"
+      }]
+    }
     # eks-node-monitoring-agent       = { most_recent = true }
   }
 
@@ -171,11 +177,12 @@ resource "aws_eks_pod_identity_association" "aws_cloudwatch_observability" {
 
 
 resource "helm_release" "nvidia_gpu_operator" {
-  count            = var.enable_nvidia_device_plugin ? 1 : 0 # Reusing the same variable for now
-  name             = "gpu-operator"
-  repository       = "https://helm.ngc.nvidia.com/nvidia"
-  chart            = "gpu-operator"
-  version          = "v24.9.2" # Latest stable version as of now
+  count      = var.enable_nvidia_device_plugin ? 1 : 0 # Reusing the same variable for now
+  name       = "gpu-operator"
+  repository = "https://helm.ngc.nvidia.com/nvidia"
+  chart      = "gpu-operator"
+  # version          = "v24.9.2"
+  version          = "v25.10.1" # Latest stable version as of now
   namespace        = "gpu-operator"
   create_namespace = true
   wait             = true
