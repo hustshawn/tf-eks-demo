@@ -85,6 +85,13 @@ resource "kubectl_manifest" "karpenter_node_class" {
   spec:
     amiSelectorTerms:
     - alias: al2023@latest
+    instanceStorePolicy: RAID0
+    blockDeviceMappings:
+    - deviceName: /dev/xvda
+      ebs:
+        encrypted: true
+        volumeSize: 500Gi
+        volumeType: gp3
     role: ${module.eks.cluster_name}
     subnetSelectorTerms:
     - tags:

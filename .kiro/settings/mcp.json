@@ -35,7 +35,7 @@
         "AWS_PROFILE": "default",
         "AWS_REGION": "us-west-2"
       },
-      "disabled": false,
+      "disabled": true,
       "autoApprove": [
         "get_pricing_service_codes",
         "get_pricing_service_attributes",
