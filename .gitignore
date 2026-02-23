@@ -8,3 +8,5 @@ planfile
 temp
 
 .amazonq
+
+karpenter-resources/
