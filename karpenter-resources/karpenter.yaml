@@ -44,5 +44,5 @@ spec:
   limits:
     cpu: 1000
   disruption:
-    consolidationPolicy: WhenEmpty
+    consolidationPolicy: WhenEmptyOrUnderutilized
     consolidateAfter: 30s

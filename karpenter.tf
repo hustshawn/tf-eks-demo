@@ -214,7 +214,7 @@ resource "kubectl_manifest" "karpenter_gpu_node_pool" {
         requirements:
           - key: "karpenter.k8s.aws/instance-family"
             operator: In
-            values: ["g6", "g6e", "p4", "p4d", "p4de", "p5", "p5en", "p6-b200" ]
+            values: ["g6", "g6e", "g7e", "p4", "p4d", "p4de", "p5", "p5en", "p6-b200" ]
           - key: "kubernetes.io/arch"
             operator: In
             values: [ "amd64" ]
