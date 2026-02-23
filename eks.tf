@@ -77,7 +77,10 @@ module "eks" {
         }
       })
     }
-    eks-pod-identity-agent = { most_recent = true }
+    eks-pod-identity-agent = {
+      before_compute = true
+      most_recent    = true
+    }
   }
 
   # For migration to EKS Auto Mode only
@@ -86,7 +89,6 @@ module "eks" {
   #   enabled    = true
   #   node_pools = ["general-purpose", "system"]
   # }
-  enable_efa_support = true
 
   vpc_id     = module.vpc.vpc_id
   subnet_ids = module.vpc.private_subnets
@@ -113,6 +115,7 @@ module "eks" {
     }
   }
 
+  enable_efa_support = true
   # # Add the EFA security group to the node security group
   # node_security_group_additional_rules = {
   #   efa_all = {
@@ -276,7 +279,7 @@ resource "kubernetes_annotations" "disable_gp2" {
 #---------------------------------------------------------------
 # GP3 Storage Class - Set as default
 #---------------------------------------------------------------
-resource "kubernetes_storage_class" "default_gp3" {
+resource "kubernetes_storage_class_v1" "default_gp3" {
   metadata {
     name = "gp3"
     annotations = {

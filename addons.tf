@@ -156,6 +156,25 @@ module "ebs_csi_driver_irsa" {
   tags = local.tags
 }
 
+module "s3_csi_pod_identity" {
+  source  = "terraform-aws-modules/eks-pod-identity/aws"
+  version = "~> 1.9.0"
+
+  name                               = "s3-csi"
+  attach_mountpoint_s3_csi_policy    = true
+  mountpoint_s3_csi_bucket_arns      = ["arn:aws:s3:::*"]
+  mountpoint_s3_csi_bucket_path_arns = ["arn:aws:s3:::*"]
+  associations = {
+    this = {
+      cluster_name    = module.eks.cluster_name
+      namespace       = "kube-system"
+      service_account = "s3-csi-driver-sa"
+    }
+  }
+
+  tags = local.tags
+}
+
 module "aws_cloudwatch_observability_pod_identity" {
   source  = "terraform-aws-modules/eks-pod-identity/aws"
   version = "~> 1.9.0"
