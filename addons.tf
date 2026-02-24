@@ -129,12 +129,7 @@ module "eks_blueprints_addons" {
     }
   }
 
-  tags = merge(local.tags, {
-    # NOTE - if creating multiple security groups with this module, only tag the
-    # security group that Karpenter should utilize with the following tag
-    # (i.e. - at most, only one security group should have this tag in your account)
-    "Environment" = "dev"
-  })
+  tags = local.tags
 }
 
 
@@ -182,16 +177,15 @@ module "aws_cloudwatch_observability_pod_identity" {
   name = "aws-cloudwatch-observability"
 
   attach_aws_cloudwatch_observability_policy = true
+  associations = {
+    this = {
+      cluster_name    = module.eks.cluster_name
+      namespace       = "amazon-cloudwatch"
+      service_account = "cloudwatch-agent"
+    }
+  }
 
   tags = local.tags
-}
-
-# Create Pod Identity associations for the service account
-resource "aws_eks_pod_identity_association" "aws_cloudwatch_observability" {
-  cluster_name    = module.eks.cluster_name
-  namespace       = "amazon-cloudwatch"
-  service_account = "cloudwatch-agent"
-  role_arn        = module.aws_cloudwatch_observability_pod_identity.iam_role_arn
 }
 
 

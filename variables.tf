@@ -17,6 +17,12 @@ variable "cluster_name" {
   description = "The name of the EKS cluster"
 }
 
+variable "cluster_version" {
+  type        = string
+  default     = "1.35"
+  description = "The Kubernetes version for the EKS cluster"
+}
+
 variable "dns_domain" {
   type        = string
   default     = "example.com"

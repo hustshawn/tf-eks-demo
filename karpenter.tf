@@ -8,7 +8,7 @@ locals {
 
 module "karpenter" {
   source  = "terraform-aws-modules/eks/aws//modules/karpenter"
-  version = "~> 20.24"
+  version = "~> 20.31"
 
   cluster_name          = module.eks.cluster_name
   enable_v1_permissions = true
@@ -221,8 +221,6 @@ resource "kubectl_manifest" "karpenter_gpu_node_pool" {
           - key: "karpenter.sh/capacity-type"
             operator: In
             values: [ "spot", "on-demand" ]
-    limits:
-      cpu: 5000
   YAML
 }
 

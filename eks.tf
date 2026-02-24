@@ -7,7 +7,7 @@ module "eks" {
   version = "~> 20.31"
 
   cluster_name    = local.name
-  cluster_version = "1.34"
+  cluster_version = var.cluster_version
 
   # Give the Terraform identity admin access to the cluster
   # which will allow it to deploy resources into the cluster
@@ -78,8 +78,9 @@ module "eks" {
       })
     }
     eks-pod-identity-agent = {
-      before_compute = true
-      most_recent    = true
+      before_compute              = true
+      most_recent                 = true
+      resolve_conflicts_on_create = "OVERWRITE"
     }
   }
 
@@ -129,34 +130,6 @@ module "eks" {
   # }
 
   eks_managed_node_groups = {
-
-    ng-1 = {
-      create         = false
-      min_size       = 1
-      max_size       = 2
-      desired_size   = 2
-      instance_types = ["m5.xlarge"]
-      capacity_type  = "SPOT"
-      block_device_mappings = {
-        xvda = {
-          device_name = "/dev/xvda"
-          ebs = {
-            volume_size = 800
-            volume_type = "gp3"
-            iops        = 3000
-            throughput  = 150
-            # encrypted             = true
-            # kms_key_id            = module.ebs_kms_key.key_arn
-            delete_on_termination = true
-          }
-        }
-      }
-      key_name = "mac-ed25519"
-      tags = {
-        "test" = "1"
-      }
-    }
-
     p5-cbr = {
       create = false
       # The EKS AL2023 NVIDIA AMI provides all of the necessary components
@@ -185,12 +158,10 @@ module "eks" {
         xvda = {
           device_name = "/dev/xvda"
           ebs = {
-            volume_size = 800
-            volume_type = "gp3"
-            iops        = 3000
-            throughput  = 150
-            # encrypted             = true
-            # kms_key_id            = module.ebs_kms_key.key_arn
+            volume_size           = 800
+            volume_type           = "gp3"
+            iops                  = 3000
+            throughput            = 150
             delete_on_termination = true
           }
         }
@@ -203,10 +174,6 @@ module "eks" {
       max_size     = 2
       desired_size = 1
 
-      # This will:
-      # 1. Create a placement group to place the instances close to one another
-      # 2. Ignore subnets that reside in AZs that do not support the instance type
-      # 3. Expose all of the available EFA interfaces on the launch template
       enable_efa_support = false
 
       labels = {
@@ -215,7 +182,6 @@ module "eks" {
       }
 
       taints = {
-        # Ensure only GPU workloads are scheduled on this node group
         gpu = {
           key    = "nvidia.com/gpu"
           value  = "true"
@@ -223,9 +189,6 @@ module "eks" {
         }
       }
 
-      # First subnet is in the "${local.region}a" availability zone
-      # where the capacity reservation is created
-      # TODO - Update the subnet to match the availability zone of *YOUR capacity reservation
       subnet_ids = module.vpc.private_subnets
 
       # ML capacity block reservation
@@ -256,10 +219,6 @@ module "eks" {
 
 
 
-import {
-  to = module.eks.aws_eks_access_entry.this["cluster_creator"]
-  id = "${local.name}:arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/Admin"
-}
 #---------------------------------------------------------------
 # Disable default GP2 Storage Class
 #---------------------------------------------------------------

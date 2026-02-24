@@ -112,7 +112,8 @@ locals {
   argocd_host         = "argocd.${var.dns_domain}"
 
   tags = {
-    Blueprint  = local.name
-    GithubRepo = "github.com/aws-ia/terraform-aws-eks-blueprints"
+    Blueprint   = local.name
+    GithubRepo  = "github.com/aws-ia/terraform-aws-eks-blueprints"
+    Environment = "dev"
   }
 }
