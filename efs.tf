@@ -47,7 +47,7 @@ resource "kubernetes_storage_class_v1" "efs" {
   parameters = {
     provisioningMode = "efs-ap" # Dynamic provisioning
     fileSystemId     = module.efs.id
-    directoryPerms   = "777"
+    directoryPerms   = "755"
   }
 
   mount_options = [
@@ -58,71 +58,3 @@ resource "kubernetes_storage_class_v1" "efs" {
     module.eks_blueprints_addons.aws_efs_csi_driver
   ]
 }
-
-
-#---------------------------------------------------------------
-# EFS
-#---------------------------------------------------------------
-
-
-# resource "kubernetes_storage_class_v1" "efs" {
-#   metadata {
-#     name = "efs"
-#   }
-
-#   storage_provisioner = "efs.csi.aws.com"
-#   parameters = {
-#     provisioningMode = "efs-ap" # Dynamic provisioning
-#     # fileSystemId     = module.efs.id
-#     directoryPerms = "700"
-#   }
-
-#   mount_options = [
-#     "iam"
-#   ]
-
-#   depends_on = [
-#     module.eks_blueprints_addons
-#   ]
-# }
-
-
-# #----------------------------------------------------------------
-# # EFS Persistent Volume for Dify only
-# #----------------------------------------------------------------
-# # resource "kubernetes_persistent_volume_v1" "efs_pv" {
-# #   metadata {
-# #     name = "efs-pv"
-# #   }
-# #   spec {
-# #     capacity = {
-# #       storage = "10Gi"
-# #     }
-# #     access_modes                     = ["ReadWriteMany"]
-# #     persistent_volume_reclaim_policy = "Retain"
-# #     storage_class_name               = kubernetes_storage_class_v1.efs.id
-# #     persistent_volume_source {
-# #       csi {
-# #         driver        = "efs.csi.aws.com"
-# #         volume_handle = module.efs.id
-# #       }
-# #     }
-# #   }
-# # }
-
-# # resource "kubernetes_persistent_volume_claim_v1" "efs_pvc" {
-# #   metadata {
-# #     name      = "efs-pvc"
-# #     namespace = "dify"
-# #   }
-# #   spec {
-# #     access_modes       = ["ReadWriteMany"]
-# #     storage_class_name = kubernetes_storage_class_v1.efs.id
-# #     resources {
-# #       requests = {
-# #         storage = "10Gi"
-# #       }
-# #     }
-# #     volume_name = kubernetes_persistent_volume_v1.efs_pv.id
-# #   }
-# # }

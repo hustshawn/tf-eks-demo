@@ -11,8 +11,7 @@ module "eks_blueprints_addons" {
 
   eks_addons = {
     aws-ebs-csi-driver = {
-      most_recent              = true
-      service_account_role_arn = module.ebs_csi_driver_irsa.iam_role_arn
+      most_recent = true
       configuration_values = jsonencode({
         "controller" : {
           "volumeModificationFeature" : {
@@ -26,6 +25,7 @@ module "eks_blueprints_addons" {
         }
       })
     }
+    aws-efs-csi-driver           = { most_recent = true }
     metrics-server               = { most_recent = true }
     aws-mountpoint-s3-csi-driver = { most_recent = true }
     # amazon-cloudwatch-observability   = { most_recent = true }
@@ -57,8 +57,7 @@ module "eks_blueprints_addons" {
       },
     ]
   }
-  # enable_aws_efs_csi_driver = true
-  enable_aws_efs_csi_driver = true
+  enable_aws_efs_csi_driver = false
 
   # EKS Managed Addons included metrics-server
 
@@ -133,18 +132,36 @@ module "eks_blueprints_addons" {
 }
 
 
-module "ebs_csi_driver_irsa" {
-  source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
-  version = "~> 5.20"
+module "ebs_csi_pod_identity" {
+  source  = "terraform-aws-modules/eks-pod-identity/aws"
+  version = "~> 1.9.0"
 
-  role_name_prefix = "${module.eks.cluster_name}-ebs-csi-driver-"
+  name                      = "ebs-csi"
+  attach_aws_ebs_csi_policy = true
 
-  attach_ebs_csi_policy = true
+  associations = {
+    this = {
+      cluster_name    = module.eks.cluster_name
+      namespace       = "kube-system"
+      service_account = "ebs-csi-controller-sa"
+    }
+  }
 
-  oidc_providers = {
-    main = {
-      provider_arn               = module.eks.oidc_provider_arn
-      namespace_service_accounts = ["kube-system:ebs-csi-controller-sa"]
+  tags = local.tags
+}
+
+module "efs_csi_pod_identity" {
+  source  = "terraform-aws-modules/eks-pod-identity/aws"
+  version = "~> 1.9.0"
+
+  name                      = "efs-csi"
+  attach_aws_efs_csi_policy = true
+
+  associations = {
+    this = {
+      cluster_name    = module.eks.cluster_name
+      namespace       = "kube-system"
+      service_account = "efs-csi-controller-sa"
     }
   }
 
