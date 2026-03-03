@@ -5,7 +5,7 @@ This repository demonstrates Terraform configurations for deploying a production
 ## Features
 
 ### Core Infrastructure
-- **EKS cluster (v1.33)** with Fargate profiles for system components
+- **EKS cluster (v1.35)** with Fargate profiles for system components
 - **Karpenter v1.6.1** for intelligent auto-scaling and cost optimization
 - **Reserved Capacity Support** - Native ODCR integration for cost-effective GPU workloads
 - **GPU Workload Ready** - Optimized for ML/AI with NVIDIA device plugin and EFA support
@@ -40,7 +40,7 @@ This repository demonstrates Terraform configurations for deploying a production
 ## Prerequisites
 
 - Terraform >= 1.3
-- AWS CLI configured with appropriate credentials
+- AWS CLI configured with appropriate credentials and profile
 - kubectl
 - (Optional) AWS Capacity Reservation for cost optimization
 
@@ -51,11 +51,14 @@ This repository demonstrates Terraform configurations for deploying a production
 Create a `dev.auto.tfvars` file with the following variables:
 
 ```hcl
+aws_profile                  = "your-aws-profile"      # defaults to "default" if omitted
 region                       = "us-west-2"
+cluster_name                 = "tf-eks-demo"            # defaults to "tf-eks-demo" if omitted
+cluster_version              = "1.35"
 dns_domain                   = "your-domain.com"
 enable_nvidia_device_plugin  = true
 enable_aws_efa_device_plugin = true
-capacity_reservation_id      = "cr-xxxxxxxxxxxxxxxxx"  # Optional: Your capacity reservation ID
+capacity_reservation_id      = "cr-xxxxxxxxxxxxxxxxx"  # required for reserved-capacity nodepool
 ```
 
 ### Key Configuration Files
@@ -77,13 +80,13 @@ capacity_reservation_id      = "cr-xxxxxxxxxxxxxxxxx"  # Optional: Your capacity
 
 3. Initialize Terraform:
    ```bash
-   terraform init
+   AWS_PROFILE=your-aws-profile terraform init
    ```
 
 4. Review and apply the Terraform configuration:
    ```bash
-   terraform plan -out=planfile
-   terraform apply planfile
+   AWS_PROFILE=your-aws-profile terraform plan -out=planfile
+   AWS_PROFILE=your-aws-profile terraform apply planfile
    ```
 
 5. Configure kubectl to connect to your cluster:
@@ -205,9 +208,11 @@ kubectl describe ec2nodeclass reserved-capacity
 
 ## Security
 
-- OIDC provider enabled for IAM roles for service accounts
+- **EKS Pod Identity** used for all CSI drivers and add-ons (EBS, EFS, S3, CloudWatch)
+- **IRSA** used for Karpenter controller
+- IMDSv2 enforced on GPU/reserved-capacity nodes (`httpTokens: required`)
+- EFS access point directories use `755` permissions
 - Security groups automatically managed
-- Pod security standards enforced
 - Secure communication with private endpoints
 
 ## Contributing
