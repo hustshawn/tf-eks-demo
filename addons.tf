@@ -1,6 +1,6 @@
 module "eks_blueprints_addons" {
   source  = "aws-ia/eks-blueprints-addons/aws"
-  version = "~> 1.0" #ensure to update this to the latest/desired version
+  version = "~> 1.23"
 
   cluster_name      = module.eks.cluster_name
   cluster_endpoint  = module.eks.cluster_endpoint
@@ -134,7 +134,7 @@ module "eks_blueprints_addons" {
 
 module "ebs_csi_pod_identity" {
   source  = "terraform-aws-modules/eks-pod-identity/aws"
-  version = "~> 1.9.0"
+  version = "~> 2.7"
 
   name                      = "ebs-csi"
   attach_aws_ebs_csi_policy = true
@@ -152,7 +152,7 @@ module "ebs_csi_pod_identity" {
 
 module "efs_csi_pod_identity" {
   source  = "terraform-aws-modules/eks-pod-identity/aws"
-  version = "~> 1.9.0"
+  version = "~> 2.7"
 
   name                      = "efs-csi"
   attach_aws_efs_csi_policy = true
@@ -170,7 +170,7 @@ module "efs_csi_pod_identity" {
 
 module "s3_csi_pod_identity" {
   source  = "terraform-aws-modules/eks-pod-identity/aws"
-  version = "~> 1.9.0"
+  version = "~> 2.7"
 
   name                               = "s3-csi"
   attach_mountpoint_s3_csi_policy    = true
@@ -189,7 +189,7 @@ module "s3_csi_pod_identity" {
 
 module "aws_cloudwatch_observability_pod_identity" {
   source  = "terraform-aws-modules/eks-pod-identity/aws"
-  version = "~> 1.9.0"
+  version = "~> 2.7"
 
   name = "aws-cloudwatch-observability"
 
@@ -211,8 +211,8 @@ resource "helm_release" "nvidia_gpu_operator" {
   name       = "gpu-operator"
   repository = "https://helm.ngc.nvidia.com/nvidia"
   chart      = "gpu-operator"
-  # version          = "v24.9.2"
-  version          = "v25.10.1" # Latest stable version as of now
+  # version          = "v25.10.1" 
+  version          = "v26.3.0" # Latest stable version as of now
   namespace        = "gpu-operator"
   create_namespace = true
   wait             = true

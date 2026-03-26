@@ -4,17 +4,17 @@
 
 module "eks" {
   source  = "terraform-aws-modules/eks/aws"
-  version = "~> 20.31"
+  version = "~> 21.15"
 
-  cluster_name    = local.name
-  cluster_version = var.cluster_version
+  name               = local.name
+  kubernetes_version = var.cluster_version
 
   # Give the Terraform identity admin access to the cluster
   # which will allow it to deploy resources into the cluster
   enable_cluster_creator_admin_permissions = true
-  cluster_endpoint_public_access           = true
+  endpoint_public_access                   = true
 
-  cluster_addons = {
+  addons = {
     # Enable after creation to run on Karpenter managed nodes
     vpc-cni = {
       enabled     = true
@@ -96,8 +96,8 @@ module "eks" {
 
   # Fargate profiles use the cluster primary security group
   # Therefore these are not used and can be skipped
-  create_cluster_security_group = false
-  create_node_security_group    = false
+  create_security_group      = false
+  create_node_security_group = false
 
   fargate_profiles = {
     karpenter = {
@@ -116,7 +116,7 @@ module "eks" {
     }
   }
 
-  enable_efa_support = true
+  # enable_efa_support moved to per-node-group setting in v21
   # # Add the EFA security group to the node security group
   # node_security_group_additional_rules = {
   #   efa_all = {
@@ -233,7 +233,7 @@ resource "kubernetes_annotations" "disable_gp2" {
   }
   force = true
 
-  depends_on = [module.eks.eks_cluster_id]
+  depends_on = [module.eks.cluster_id]
 }
 #---------------------------------------------------------------
 # GP3 Storage Class - Set as default
@@ -255,7 +255,7 @@ resource "kubernetes_storage_class_v1" "default_gp3" {
   }
 
   depends_on = [
-    module.eks.eks_cluster_id,
+    module.eks.cluster_id,
     kubernetes_annotations.disable_gp2
   ]
 }

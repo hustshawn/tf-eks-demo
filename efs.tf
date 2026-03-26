@@ -9,7 +9,7 @@
 #---------------------------------------------------------------
 module "efs" {
   source  = "terraform-aws-modules/efs/aws"
-  version = "~> 1.6"
+  version = "~> 2.2"
 
   creation_token = local.name
   name           = local.name
@@ -20,11 +20,10 @@ module "efs" {
   }
   security_group_description = "${local.name} EFS security group"
   security_group_vpc_id      = module.vpc.vpc_id
-  security_group_rules = {
+  security_group_ingress_rules = {
     vpc = {
-      # relying on the defaults provided for EFS/NFS (2049/TCP + ingress)
       description = "NFS ingress from VPC private subnets"
-      cidr_blocks = module.vpc.private_subnets_cidr_blocks
+      cidr_ipv4   = module.vpc.vpc_cidr_block
     }
   }
 
