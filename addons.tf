@@ -41,20 +41,13 @@ module "eks_blueprints_addons" {
 
   enable_aws_load_balancer_controller = true
   aws_load_balancer_controller = {
-    chart_version = "1.14.1"
+    chart_version = "3.1.0"
     set = [
       {
         name  = "vpcId" # explicitly set the vpcId, otherwise it may not able to retrieve the vpcId from the node
         value = module.vpc.vpc_id
       },
-      {
-        name  = "controllerConfig.featureGates.ALBGatewayAPI"
-        value = "true"
-      },
-      {
-        name  = "controllerConfig.featureGates.NLBGatewayAPI"
-        value = "true"
-      },
+      # ALBGatewayAPI and NLBGatewayAPI feature gates removed — Gateway API is GA in v3.x
     ]
   }
   enable_aws_efs_csi_driver = false
