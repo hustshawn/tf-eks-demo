@@ -80,7 +80,7 @@ resource "helm_release" "karpenter" {
   chart = "karpenter"
   # version = "1.6.1"
   version = local.karpenter_version
-  wait    = false
+  wait    = true
 
   values = [
     <<-EOT
@@ -115,317 +115,45 @@ resource "helm_release" "karpenter" {
 # Karpenter Node Class & Node Pool
 ################################################################################
 
-resource "kubectl_manifest" "karpenter_node_class" {
-  depends_on = [helm_release.karpenter]
+locals {
+  karpenter_template_vars = {
+    cluster_name            = module.eks.cluster_name
+    karpenter_namespace     = local.karpenter_namespace
+    capacity_reservation_id = var.capacity_reservation_id
+  }
+}
 
-  yaml_body = <<-YAML
-  apiVersion: karpenter.k8s.aws/v1
-  kind: EC2NodeClass
-  metadata:
-    name: default
-  spec:
-    amiSelectorTerms:
-    - alias: al2023@latest
-    instanceStorePolicy: RAID0
-    blockDeviceMappings:
-    - deviceName: /dev/xvda
-      ebs:
-        encrypted: true
-        volumeSize: 500Gi
-        volumeType: gp3
-    role: ${module.eks.cluster_name}
-    subnetSelectorTerms:
-    - tags:
-        karpenter.sh/discovery: ${module.eks.cluster_name}
-    securityGroupSelectorTerms:
-    - tags:
-        karpenter.sh/discovery: ${module.eks.cluster_name}
-    tags:
-      karpenter.sh/discovery: ${module.eks.cluster_name}
-  YAML
+data "kubectl_path_documents" "karpenter_node_classes" {
+  pattern = "${path.module}/kubernetes/karpenter/node-classes/*.yaml"
+  vars    = local.karpenter_template_vars
+}
+
+data "kubectl_path_documents" "karpenter_node_pools" {
+  pattern = "${path.module}/kubernetes/karpenter/node-pools/*.yaml"
+  vars    = local.karpenter_template_vars
+}
+
+data "kubectl_path_documents" "karpenter_flow_schemas" {
+  pattern = "${path.module}/kubernetes/karpenter/flow-schemas/*.yaml"
+  vars    = local.karpenter_template_vars
+}
+
+resource "kubectl_manifest" "karpenter_node_class" {
+  for_each   = data.kubectl_path_documents.karpenter_node_classes.manifests
+  depends_on = [helm_release.karpenter]
+  yaml_body  = each.value
+  wait       = true
 }
 
 resource "kubectl_manifest" "karpenter_node_pool" {
-  depends_on = [
-    helm_release.karpenter,
-    kubectl_manifest.karpenter_node_class
-  ]
-  yaml_body = <<-YAML
-  apiVersion: karpenter.sh/v1
-  kind: NodePool
-  metadata:
-    name: default
-  spec:
-    template:
-      spec:
-        nodeClassRef:
-          group: karpenter.k8s.aws
-          kind: EC2NodeClass
-          name: default
-        requirements:
-        - key: "karpenter.k8s.aws/instance-category"
-          operator: In
-          values: [ "c", "m", "r" ]
-        - key: "karpenter.k8s.aws/instance-cpu"
-          operator: Gt
-          values: [ "4" ]
-        - key: "karpenter.k8s.aws/instance-hypervisor"
-          operator: In
-          values: [ "nitro" ]
-        - key: "karpenter.k8s.aws/instance-generation"
-          operator: Gt
-          values: [ "2" ]
-    limits:
-      cpu: 1000
-    disruption:
-      consolidationPolicy: WhenEmptyOrUnderutilized
-      consolidateAfter: 300s
-  YAML
+  for_each   = data.kubectl_path_documents.karpenter_node_pools.manifests
+  depends_on = [helm_release.karpenter, kubectl_manifest.karpenter_node_class]
+  yaml_body  = each.value
 }
 
-resource "kubectl_manifest" "karpenter_gpu_node_class" {
-  depends_on = [helm_release.karpenter]
-
-  yaml_body = <<-YAML
-  apiVersion: karpenter.k8s.aws/v1
-  kind: EC2NodeClass
-  metadata:
-    name: gpu
-  spec:
-    amiFamily: AL2023
-    amiSelectorTerms:
-    - alias: al2023@latest
-    instanceStorePolicy: RAID0
-    blockDeviceMappings:
-      - deviceName: /dev/xvda
-        ebs:
-          volumeSize: 500Gi
-          volumeType: gp3
-          encrypted: true
-    metadataOptions:
-      httpEndpoint: enabled
-      httpProtocolIPv6: disabled
-      httpPutResponseHopLimit: 1
-      httpTokens: required
-    role: ${module.eks.cluster_name}
-    securityGroupSelectorTerms:
-    - tags:
-        karpenter.sh/discovery: ${module.eks.cluster_name}
-    subnetSelectorTerms:
-    - tags:
-        karpenter.sh/discovery: ${module.eks.cluster_name}
-    tags:
-      karpenter.sh/discovery: ${module.eks.cluster_name}
-  YAML
-}
-
-resource "kubectl_manifest" "karpenter_gpu_node_pool" {
-  depends_on = [
-    helm_release.karpenter,
-    kubectl_manifest.karpenter_gpu_node_class
-  ]
-  yaml_body = <<-YAML
-  apiVersion: karpenter.sh/v1
-  kind: NodePool
-  metadata:
-    name: gpu-nodepool
-  spec:
-    disruption:
-      budgets:
-      - nodes: 10%
-      consolidateAfter: 300s
-      consolidationPolicy: WhenEmpty
-    limits:
-      cpu: 5000
-    template:
-      metadata:
-        labels:
-          owner: data-engineer
-          vpc.amazonaws.com/efa.present: "true"
-      spec:
-        expireAfter: 720h
-        nodeClassRef:
-          group: karpenter.k8s.aws
-          kind: EC2NodeClass
-          name: gpu
-        taints:
-          - key: nvidia.com/gpu
-            value: "true"
-            effect: "NoSchedule"
-        requirements:
-          - key: "karpenter.k8s.aws/instance-family"
-            operator: In
-            values: ["g6", "g6e", "g7e", "p4", "p4d", "p4de", "p5", "p5en", "p6-b200" ]
-          - key: "kubernetes.io/arch"
-            operator: In
-            values: [ "amd64" ]
-          - key: "karpenter.sh/capacity-type"
-            operator: In
-            values: [ "spot", "on-demand" ]
-  YAML
-}
-
-# FlowSchema
-resource "kubectl_manifest" "karpenter_controller_flow_schema" {
-  yaml_body = <<-YAML
-  apiVersion: flowcontrol.apiserver.k8s.io/v1
-  kind: FlowSchema
-  metadata:
-    name: karpenter-workload
-  spec:
-    distinguisherMethod:
-      type: ByUser
-    matchingPrecedence: 1000
-    priorityLevelConfiguration:
-      name: workload-high
-    rules:
-    - nonResourceRules:
-      - nonResourceURLs:
-        - '*'
-        verbs:
-        - '*'
-      resourceRules:
-      - apiGroups:
-        - '*'
-        clusterScope: true
-        namespaces:
-        - '*'
-        resources:
-        - '*'
-        verbs:
-        - '*'
-      subjects:
-      - kind: ServiceAccount
-        serviceAccount:
-          name: karpenter
-          namespace: "${helm_release.karpenter.namespace}"
-  YAML
-}
-
-resource "kubectl_manifest" "karpenter_leader_election_flow_schema" {
-  yaml_body = <<-YAML
-  apiVersion: flowcontrol.apiserver.k8s.io/v1
-  kind: FlowSchema
-  metadata:
-    name: karpenter-leader-election
-  spec:
-    distinguisherMethod:
-      type: ByUser
-    matchingPrecedence: 200
-    priorityLevelConfiguration:
-      name: leader-election
-    rules:
-    - resourceRules:
-      - apiGroups:
-        - coordination.k8s.io
-        namespaces:
-        - '*'
-        resources:
-        - leases
-        verbs:
-        - get
-        - create
-        - update
-      subjects:
-      - kind: ServiceAccount
-        serviceAccount:
-          name: karpenter
-          namespace: "${helm_release.karpenter.namespace}"
-  YAML
-}
-
-################################################################################
-# Reserved Capacity NodeClass & NodePool
-################################################################################
-
-resource "kubectl_manifest" "karpenter_reserved_capacity_node_class" {
-  depends_on = [helm_release.karpenter]
-
-  yaml_body = <<-YAML
-apiVersion: karpenter.k8s.aws/v1
-kind: EC2NodeClass
-metadata:
-  name: reserved-capacity
-spec:
-  amiFamily: AL2023
-  amiSelectorTerms:
-  - alias: al2023@latest
-  instanceStorePolicy: RAID0
-  blockDeviceMappings:
-    - deviceName: /dev/xvda
-      ebs:
-        volumeSize: 800Gi
-        volumeType: gp3
-        iops: 3000
-        throughput: 150
-        encrypted: true
-        deleteOnTermination: true
-  metadataOptions:
-    httpEndpoint: enabled
-    httpProtocolIPv6: disabled
-    httpPutResponseHopLimit: 1
-    httpTokens: required
-  role: ${module.eks.cluster_name}
-  subnetSelectorTerms:
-  - tags:
-      karpenter.sh/discovery: ${module.eks.cluster_name}
-  securityGroupSelectorTerms:
-  - tags:
-      karpenter.sh/discovery: ${module.eks.cluster_name}
-  capacityReservationSelectorTerms:
-  - id: ${var.capacity_reservation_id}
-  tags:
-    karpenter.sh/discovery: ${module.eks.cluster_name}
-YAML
-}
-
-resource "kubectl_manifest" "karpenter_reserved_capacity_node_pool" {
-  depends_on = [
-    helm_release.karpenter,
-    kubectl_manifest.karpenter_reserved_capacity_node_class
-  ]
-
-  yaml_body = <<-YAML
-apiVersion: karpenter.sh/v1
-kind: NodePool
-metadata:
-  name: reserved-capacity-pool
-spec:
-  weight: 10
-  template:
-    metadata:
-      labels:
-        vpc.amazonaws.com/efa.present: "true"
-        nvidia.com/gpu.present: "true"
-    spec:
-      expireAfter: 720h
-      nodeClassRef:
-        group: karpenter.k8s.aws
-        kind: EC2NodeClass
-        name: reserved-capacity
-      taints:
-        - key: nvidia.com/gpu
-          value: "true"
-          effect: "NoSchedule"
-      requirements:
-      - key: "karpenter.sh/capacity-type"
-        operator: In
-        values: ["reserved", "on-demand"]
-      - key: "karpenter.k8s.aws/instance-family"
-        operator: In
-        values: ["p4", "p4d", "p4de", "p5", "p5en", "p6-b200"]
-      - key: "kubernetes.io/arch"
-        operator: In
-        values: ["amd64"]
-      - key: "karpenter.k8s.aws/instance-hypervisor"
-        operator: In
-        values: ["nitro"]
-  limits:
-    cpu: 5000
-  disruption:
-    consolidationPolicy: WhenEmpty
-    consolidateAfter: 300s
-YAML
+resource "kubectl_manifest" "karpenter_flow_schema" {
+  for_each  = data.kubectl_path_documents.karpenter_flow_schemas.manifests
+  yaml_body = each.value
 }
 
 
