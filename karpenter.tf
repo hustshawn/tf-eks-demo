@@ -1,6 +1,6 @@
 locals {
   karpenter_namespace = "karpenter"
-  karpenter_version   = "1.9.0"
+  karpenter_version   = "1.11.0"
 }
 
 ################################################################################

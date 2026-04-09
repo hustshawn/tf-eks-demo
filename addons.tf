@@ -149,6 +149,10 @@ module "efs_csi_pod_identity" {
 
   name                      = "efs-csi"
   attach_aws_efs_csi_policy = true
+  additional_policy_arns = {
+    AmazonS3FilesCSIDriverPolicy = "arn:aws:iam::aws:policy/service-role/AmazonS3FilesCSIDriverPolicy"
+    # additional           = aws_iam_policy.additional.arn
+  }
 
   associations = {
     this = {

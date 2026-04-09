@@ -22,8 +22,8 @@ spec:
       - key: "karpenter.k8s.aws/instance-generation"
         operator: Gt
         values: [ "2" ]
-  limits:
-    cpu: 1000
+  # limits:
+  #   cpu: 1000 # Comment out the limit for the scaling testing
   disruption:
     consolidationPolicy: WhenEmptyOrUnderutilized
     consolidateAfter: 300s
