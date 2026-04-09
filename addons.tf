@@ -25,7 +25,6 @@ module "eks_blueprints_addons" {
         }
       })
     }
-    aws-efs-csi-driver           = { most_recent = true }
     metrics-server               = { most_recent = true }
     aws-mountpoint-s3-csi-driver = { most_recent = true }
     # amazon-cloudwatch-observability   = { most_recent = true }
@@ -50,7 +49,11 @@ module "eks_blueprints_addons" {
       # ALBGatewayAPI and NLBGatewayAPI feature gates removed — Gateway API is GA in v3.x
     ]
   }
-  enable_aws_efs_csi_driver = false
+  enable_aws_efs_csi_driver = true
+  aws_efs_csi_driver = {
+    chart_version = "4.0.0" # app version 3.0.0
+    create_role   = false   # Pod Identity is used instead of IRSA
+  }
 
   # EKS Managed Addons included metrics-server
 
@@ -150,8 +153,8 @@ module "efs_csi_pod_identity" {
   name                      = "efs-csi"
   attach_aws_efs_csi_policy = true
   additional_policy_arns = {
+    # For S3 Files
     AmazonS3FilesCSIDriverPolicy = "arn:aws:iam::aws:policy/service-role/AmazonS3FilesCSIDriverPolicy"
-    # additional           = aws_iam_policy.additional.arn
   }
 
   associations = {
@@ -159,6 +162,11 @@ module "efs_csi_pod_identity" {
       cluster_name    = module.eks.cluster_name
       namespace       = "kube-system"
       service_account = "efs-csi-controller-sa"
+    }
+    node-sa = {
+      cluster_name    = module.eks.cluster_name
+      namespace       = "kube-system"
+      service_account = "efs-csi-node-sa"
     }
   }
 
