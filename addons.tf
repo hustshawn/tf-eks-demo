@@ -27,6 +27,7 @@ module "eks_blueprints_addons" {
     }
     metrics-server               = { most_recent = true }
     aws-mountpoint-s3-csi-driver = { most_recent = true }
+    aws-efs-csi-driver           = { most_recent = true }
     # amazon-cloudwatch-observability   = { most_recent = true }
     aws-network-flow-monitoring-agent = {
       most_recent = true
@@ -35,6 +36,7 @@ module "eks_blueprints_addons" {
         service_account = "aws-network-flow-monitor-agent-service-account"
       }]
     }
+
     # eks-node-monitoring-agent       = { most_recent = true }
   }
 
@@ -49,7 +51,7 @@ module "eks_blueprints_addons" {
       # ALBGatewayAPI and NLBGatewayAPI feature gates removed — Gateway API is GA in v3.x
     ]
   }
-  enable_aws_efs_csi_driver = true
+  enable_aws_efs_csi_driver = false
   aws_efs_csi_driver = {
     chart_version = "4.0.0" # app version 3.0.0
     create_role   = false   # Pod Identity is used instead of IRSA
