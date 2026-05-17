@@ -192,15 +192,15 @@ module "eks" {
       subnet_ids = module.vpc.private_subnets
 
       # ML capacity block reservation
-      capacity_type = "CAPACITY_BLOCK"
-      instance_market_options = {
+      capacity_type = var.enable_capacity_reservation ? "CAPACITY_BLOCK" : "ON_DEMAND"
+      instance_market_options = var.enable_capacity_reservation ? {
         market_type = "capacity-block"
-      }
-      capacity_reservation_specification = {
+      } : null
+      capacity_reservation_specification = var.enable_capacity_reservation ? {
         capacity_reservation_target = {
           capacity_reservation_id = var.capacity_reservation_id
         }
-      }
+      } : null
     }
   }
 

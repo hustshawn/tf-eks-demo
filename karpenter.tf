@@ -119,7 +119,7 @@ locals {
   karpenter_template_vars = {
     cluster_name            = module.eks.cluster_name
     karpenter_namespace     = local.karpenter_namespace
-    capacity_reservation_id = var.capacity_reservation_id
+    capacity_reservation_id = coalesce(var.capacity_reservation_id, "unused")
   }
 }
 
@@ -139,14 +139,20 @@ data "kubectl_path_documents" "karpenter_flow_schemas" {
 }
 
 resource "kubectl_manifest" "karpenter_node_class" {
-  for_each   = data.kubectl_path_documents.karpenter_node_classes.manifests
+  for_each = {
+    for k, v in data.kubectl_path_documents.karpenter_node_classes.manifests :
+    k => v if var.enable_capacity_reservation || !strcontains(k, "reserved-capacity")
+  }
   depends_on = [helm_release.karpenter]
   yaml_body  = each.value
   wait       = true
 }
 
 resource "kubectl_manifest" "karpenter_node_pool" {
-  for_each   = data.kubectl_path_documents.karpenter_node_pools.manifests
+  for_each = {
+    for k, v in data.kubectl_path_documents.karpenter_node_pools.manifests :
+    k => v if var.enable_capacity_reservation || !strcontains(k, "reserved-capacity")
+  }
   depends_on = [helm_release.karpenter, kubectl_manifest.karpenter_node_class]
   yaml_body  = each.value
 }

@@ -53,7 +53,14 @@ variable "enable_aws_efa_device_plugin" {
   description = "Whether to enable the AWS EFA Device Plugin"
 }
 
+variable "enable_capacity_reservation" {
+  type        = bool
+  default     = false
+  description = "Whether to provision resources tied to an EC2 On-Demand Capacity Reservation (ODCR)"
+}
+
 variable "capacity_reservation_id" {
   type        = string
-  description = "The ID of the capacity reservation"
+  default     = null
+  description = "The ID of the capacity reservation. Required when enable_capacity_reservation is true."
 }

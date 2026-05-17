@@ -6,9 +6,10 @@ This repository demonstrates Terraform configurations for deploying a production
 
 ### Core Infrastructure
 - **EKS cluster (v1.35)** with Fargate profiles for system components
-- **Karpenter v1.6.1** for intelligent auto-scaling and cost optimization
-- **Reserved Capacity Support** - Native ODCR integration for cost-effective GPU workloads
+- **Karpenter v1.11.0** for intelligent auto-scaling and cost optimization
+- **Reserved Capacity Support** - Optional ODCR integration for cost-effective GPU workloads
 - **GPU Workload Ready** - Optimized for ML/AI with NVIDIA device plugin and EFA support
+- **VPC Endpoints** - S3 (Gateway) + ECR API/DKR (Interface) for private subnet egress
 
 ### Scaling & Compute
 - **Multiple NodePools**:
@@ -58,7 +59,10 @@ cluster_version              = "1.35"
 dns_domain                   = "your-domain.com"
 enable_nvidia_device_plugin  = true
 enable_aws_efa_device_plugin = true
-capacity_reservation_id      = "cr-xxxxxxxxxxxxxxxxx"  # required for reserved-capacity nodepool
+
+# Optional: enable On-Demand Capacity Reservation (ODCR) integration
+enable_capacity_reservation  = false                   # set true to provision reserved-capacity resources
+# capacity_reservation_id    = "cr-xxxxxxxxxxxxxxxxx"  # required when enable_capacity_reservation = true
 ```
 
 ### Key Configuration Files
@@ -67,6 +71,7 @@ capacity_reservation_id      = "cr-xxxxxxxxxxxxxxxxx"  # required for reserved-c
 - `karpenter.tf` - Karpenter controller and NodePool definitions
 - `addons.tf` - EKS add-ons and Helm charts
 - `vpc.tf` - VPC and networking setup
+- `vpc-endpoint.tf` - S3/ECR VPC endpoints + endpoint security group
 
 ## Quick Start
 
@@ -96,17 +101,22 @@ capacity_reservation_id      = "cr-xxxxxxxxxxxxxxxxx"  # required for reserved-c
 
 ## Reserved Capacity Setup
 
-This cluster supports AWS On-Demand Capacity Reservations (ODCRs) for cost optimization:
+This cluster supports AWS On-Demand Capacity Reservations (ODCRs) for cost optimization. ODCR integration is **opt-in** via `enable_capacity_reservation`. When disabled, the `reserved-capacity` `EC2NodeClass`, the `reserved-capacity-pool` `NodePool`, and the `p5-cbr` managed node group's capacity-block configuration are all skipped — useful when you don't have an active reservation.
 
 ### Features
-- **Native ODCR Support** - Karpenter v1.6.1 with ReservedCapacity feature gate enabled
+- **Native ODCR Support** - Karpenter v1.11.0 with ReservedCapacity support
 - **Capacity Prioritization** - Reserved capacity first, on-demand fallback
 - **GPU Optimized** - Configured for P4/P5 instances with EFA networking
 
 ### Usage
 1. Create a capacity reservation in AWS EC2 console
-2. Update `capacity_reservation_id` in your `dev.auto.tfvars`
-3. Deploy GPU workloads with appropriate tolerations:
+2. In `dev.auto.tfvars`, set:
+   ```hcl
+   enable_capacity_reservation = true
+   capacity_reservation_id     = "cr-xxxxxxxxxxxxxxxxx"
+   ```
+3. Run `terraform plan -out=planfile` and `terraform apply planfile`
+4. Deploy GPU workloads with appropriate tolerations:
 
 ```yaml
 apiVersion: v1
@@ -133,7 +143,7 @@ spec:
    - Instance types: g6, g6e, p4, p4d, p5, p5en
    - Features: EFA support, NVIDIA taints
 
-3. **reserved-capacity-pool** - Reserved capacity
+3. **reserved-capacity-pool** - Reserved capacity *(only when `enable_capacity_reservation = true`)*
    - Instance types: p4, p4d, p5, p5en
    - Capacity types: reserved (priority), on-demand (fallback)
    - Features: 800Gi EBS, RAID0 instance store, EFA support
