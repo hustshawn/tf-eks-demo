@@ -37,6 +37,14 @@ provider "aws" {
   profile = var.aws_profile
 }
 
+# IAM Identity Center is region-specific: ListInstances only returns the instance
+# from its home region. Pin this provider to var.idc_region for IDC lookups.
+provider "aws" {
+  alias   = "idc"
+  region  = var.idc_region
+  profile = var.aws_profile
+}
+
 provider "kubernetes" {
   host                   = module.eks.cluster_endpoint
   cluster_ca_certificate = base64decode(module.eks.cluster_certificate_authority_data)

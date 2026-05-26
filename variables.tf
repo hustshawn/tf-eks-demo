@@ -64,3 +64,14 @@ variable "capacity_reservation_id" {
   default     = null
   description = "The ID of the capacity reservation. Required when enable_capacity_reservation is true."
 }
+
+variable "idc_region" {
+  type        = string
+  default     = "us-east-1"
+  description = "AWS region where the IAM Identity Center instance lives (often differs from the cluster region)."
+}
+
+variable "argocd_admin_sso_group_name" {
+  type        = string
+  description = "Display name of the IAM Identity Center group mapped to the ArgoCD ADMIN role."
+}
