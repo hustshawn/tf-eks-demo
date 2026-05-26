@@ -84,7 +84,7 @@ module "eks_blueprints_addons" {
     })]
   }
 
-  enable_argocd = true
+  enable_argocd = false
   argocd = {
     values = [templatefile("${path.module}/kubernetes/argocd/values.override.yaml", {
       hostname     = local.argocd_host
