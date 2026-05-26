@@ -37,7 +37,7 @@ module "eks_blueprints_addons" {
       }]
     }
 
-    # eks-node-monitoring-agent       = { most_recent = true }
+    eks-node-monitoring-agent       = { most_recent = true }
   }
 
   enable_aws_load_balancer_controller = true
