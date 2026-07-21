@@ -1,6 +1,8 @@
 locals {
   karpenter_namespace = "karpenter"
-  karpenter_version   = "1.11.0"
+  # 1.12.0 fixes nil-pointer panic in CapacityReservationFromEC2 when selecting
+  # Capacity Blocks via capacityReservationSelectorTerms (aws/karpenter#9080)
+  karpenter_version   = "1.12.0"
 }
 
 ################################################################################
@@ -90,7 +92,9 @@ resource "helm_release" "karpenter" {
       clusterEndpoint: ${module.eks.cluster_endpoint}
       interruptionQueue: ${module.karpenter.queue_name}
       featureGates:
-        nodeRepair: true
+        # nodeRepair kept off: it misjudged long model-loading (DeepGEMM JIT) as
+        # unhealthy and killed P5en nodes ~13min after launch
+        nodeRepair: false
     serviceAccount:
       annotations:
         eks.amazonaws.com/role-arn: ${module.karpenter.iam_role_arn}
